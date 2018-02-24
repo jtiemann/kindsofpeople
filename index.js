@@ -128,16 +128,10 @@ const ForkMe = (PSteps, NextStop, Forks) =>
 // Run It //
 ////////////
 
-const run = (tests) =>{
-
- return  tests.map((ATest) => {
+const run = (tests) => tests.map((ATest) => {
     var Visited = [];
     var Forks   = [];
-    let Bin = 0
-    let Dec = 1
-    // DECOMPOSE TEST START-END COORDINATES
     let  [StartX, StartY, EndX, EndY] = [ATest[0][0]-1, ATest[0][1]-1, ATest[1][0]-1, ATest[1][1]-1]
-    // EDGE CASE : START-END COORDS ARE IDENTICAL then check binaryOrdecimal and return (exit loop)
     if (StartEndSame(StartX, StartY, EndX, EndY)) {
       if (Bin == Matrix[StartX][StartY]){
         console.log(StartX, StartY, EndX, EndY, "Binary, Already Here!")
@@ -150,16 +144,10 @@ const run = (tests) =>{
     }
     // REDUCE [0,1] -> "Binary" | "Decimal" | "Neither"
     let Ans = [0,1].reduce((acc, BOrD) => {
-      // STARTING POINT INITIALIZATION OF 
       var PSteps =  UnvisitedMovesFromHere(Visited)(MovesFromHere([StartX, StartY, BOrD]))
       Visited.push([StartX, StartY, Matrix[StartX][StartY] ]) 
       var NextStop = HasPStep(PSteps) ? FindPSteps(PSteps)[0] : null
-
       if (NextStop == null) return acc 
-        // BLOWS UP THE CALL STACK
-      // var jim = NxtStop(NextStop, BOrD, EndX, EndY, Visited, Forks, acc)
-      // if (jim == null) return acc
-      // else return jim
 
       while (NextStop) {
         Visited = AddUniquely(Visited, NextStop)
@@ -173,11 +161,10 @@ const run = (tests) =>{
           NextStop = HasPStep(PSteps) ? FindPSteps(PSteps)[0] : null
         }
       if (NextStop == null) return acc  
-    }
+      }
     }, "Neither")
-console.log(StartX, StartY, EndX, EndY, Ans)
-   })  
-}
+  console.log(StartX, StartY, EndX, EndY, Ans)
+})  
 
 run(TestLines)
 //run(TestLines)(1)
