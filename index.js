@@ -86,12 +86,43 @@ const MovesFromHere = function(Here) {
   return [North, South, East, West].map((D) => CanIMoveDir(D))
 }
 
-//AtDestination = (Loc) => (Dest) => JSON.stringify(Loc) === JSON.stringify(Dest)
-
 const UnvisitedMovesFromHere = (AVisited) => (PossibleMoves) => 
   PossibleMoves.filter((x) => !AVisited.find((y) => JSON.stringify(y)==JSON.stringify(x[0]))) 
 
 const StartEndSame = (sx,sy,ex,ey) => (sx == ex && sy == ey) ? true : false
+
+const AddUniquely = (Arr, Unit) => {
+    Arr.push(Unit) 
+    let pf = new Set(Arr)
+    return Array.from(pf)
+}
+
+const canStepInMultipleDirections = (Arr) => Arr.filter((x) => x.length > 0).length > 1
+
+const IsArrived = (NextStop, BOrD, EndX, EndY) => (NextStop[0] == EndX && NextStop[1] == EndY && NextStop[2] == BOrD)
+const IsNotEmpty = (Arr) => Arr.length !== 0
+const HasPStep = (Psteps) => Psteps ? Psteps.find((x) => x.length > 0) : null
+const FindPSteps = (PSteps) => PSteps.find((x) => x.length > 0)
+const ForkMe = (PSteps, NextStop, Forks) => 
+                canStepInMultipleDirections ? AddUniquely(Forks, NextStop)
+                                            : Forks.filter((x) => JSON.stringify(x) !== JSON.stringify(NextStop))
+/*const NxtStop = (NextStop, BOrD, EndX, EndY, Visited, Forks, acc) => {
+  var PSteps 
+  if (NextStop == null && Forks == []) return acc 
+  if (NextStop == null && IsNotEmpty(Forks)) {
+    NewStart = Forks.pop()
+    PSteps = UnvisitedMovesFromHere(Visited)(MovesFromHere([NewStart[0], NewStart[1], NewStart[2]]))
+  }
+  else if (NextStop !== null) {
+    if (IsArrived(NextStop, BOrD, EndX, EndY)) {
+      return BOrD ? "Decimal" : "Binary"
+    }
+    PSteps = UnvisitedMovesFromHere(Visited)(MovesFromHere([NextStop[0], NextStop[1], BOrD]))
+    Forks = ForkMe(PSteps, NextStop, Forks)
+    Visited = AddUniquely(Visited, NextStop)
+  }
+  return NxtStop(HasPStep(PSteps) ? FindPSteps(PSteps)[0] : null, BOrD, EndX, EndY, Visited, Forks, acc) 
+}*/
 
 ////////////
 // Run It //
@@ -117,30 +148,29 @@ const run = (tests) =>{
         return true
       }
     }
-
+    // REDUCE [0,1] -> "Binary" | "Decimal" | "Neither"
     let Ans = [0,1].reduce((acc, BOrD) => {
+      // STARTING POINT INITIALIZATION OF 
       var PSteps =  UnvisitedMovesFromHere(Visited)(MovesFromHere([StartX, StartY, BOrD]))
       Visited.push([StartX, StartY, Matrix[StartX][StartY] ]) 
-      var NextStop = PSteps.find((x) => x.length > 0) ? PSteps.find((x) => x.length > 0)[0] : null
-      if (NextStop == null) return acc  
+      var NextStop = HasPStep(PSteps) ? FindPSteps(PSteps)[0] : null
+
+      if (NextStop == null) return acc 
+        // BLOWS UP THE CALL STACK
+      // var jim = NxtStop(NextStop, BOrD, EndX, EndY, Visited, Forks, acc)
+      // if (jim == null) return acc
+      // else return jim
+
       while (NextStop) {
-        Visited.push(NextStop) 
-        var pf = new Set(Visited)
-        Visited = Array.from(pf)
-        //console.log("Visited: ", Visited)
-        if (NextStop[0] == EndX && NextStop[1] == EndY && NextStop[2] == BOrD) return BOrD?"Decimal":"Binary" 
-        if (PSteps.filter((x) => x.length > 0).length > 1) {
-          Forks.push(NextStop)
-          var fp = new Set(Forks)
-          Forks = Array.from(fp)
-        }
-        else Forks = Forks.filter((x) => JSON.stringify(x) !== JSON.stringify(NextStop))
+        Visited = AddUniquely(Visited, NextStop)
+        if (IsArrived(NextStop, BOrD, EndX, EndY)) return BOrD?"Decimal":"Binary" 
+        Forks = ForkMe(PSteps, NextStop, Forks)
         PSteps = UnvisitedMovesFromHere(Visited)(MovesFromHere([NextStop[0], NextStop[1], BOrD]))
-        NextStop = PSteps.find((x) => x.length > 0) ? PSteps.find((x) => x.length > 0)[0] : null
+        NextStop = HasPStep(PSteps) ? FindPSteps(PSteps)[0] : null
         while (NextStop == null && Forks.length !== 0) {
           NewStart = Forks.pop()
           PSteps = UnvisitedMovesFromHere(Visited)(MovesFromHere([NewStart[0], NewStart[1], NewStart[2]]))
-          NextStop = PSteps.find((x) => x.length > 0) ? PSteps.find((x) => x.length > 0)[0] : null
+          NextStop = HasPStep(PSteps) ? FindPSteps(PSteps)[0] : null
         }
       if (NextStop == null) return acc  
     }
