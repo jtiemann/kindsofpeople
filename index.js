@@ -94,6 +94,22 @@ const ForkMe     = (PSteps, NextStop, Forks) =>
                     canStepInMultipleDirections ? AddUniquely(Forks, NextStop)
                                                 : Forks.filter((x) => JSON.stringify(x) !== JSON.stringify(NextStop))
 
+////////////////////
+// Data Structure //
+////////////////////
+
+//Initial State
+theData = {
+  Matrix: Matrix,
+  Visited: [],
+  Forks: [],
+  CurrentLocation: [0,0],
+  StartEnd: {"StartX":0, "StartY":0, "EndX":0, "EndY":0},
+  MatrixBaseNormalizer: (ATest) => [ATest[0][0]-1, ATest[0][1]-1, ATest[1][0]-1, ATest[1][1]-1]
+  
+}
+
+
 ////////////
 // Run It //
 ////////////
@@ -105,23 +121,25 @@ const run = (tests) => tests.map((ATest) => {
    --normalize start/end coords 
      (1,1) -> (0,0)
   */
-    var Visited = [];
-    var Forks   = [];
-    let [StartX, StartY, EndX, EndY] = MatrixBaseNormalizer(ATest)
+    theData.Visited = [];
+    theData.Forks   = [];
+    let [StartX, StartY, EndX, EndY] = theData.MatrixBaseNormalizer(ATest)
+    theData.StartEnd = {StartX,StartY,EndX,EndY}
+
   /*
    first try Decimal then try Binary, default output is Neither
    REDUCE [0,1] -> "Binary" | "Decimal" | "Neither"
   */ 
     let Ans = [0,1].reduce((acc, BOrD) => {
   /*
-   Am I there yet?
+   Edge case: Start and End are the same
   */
       if (IsArrived([StartX, StartY, BOrD], BOrD, EndX, EndY)) return BOrD ? "Decimal" : "Binary" 
   /* 
    can I move from here? If I can then take a step, else this test with current kind (0/1) failed. 
   */      
-      var PSteps =  UnvisitedMovesFromHere(Visited)(MovesFromHere([StartX, StartY, BOrD]))
-      Visited.push([StartX, StartY, Matrix[StartX][StartY] ]) 
+      var PSteps =  UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([StartX, StartY, BOrD]))
+      theData.Visited.push([StartX, StartY, Matrix[StartX][StartY] ]) 
 
       var NextStop = HasPStep(PSteps) ? FindPSteps(PSteps) : null
       if (NextStop == null) return acc 
@@ -131,7 +149,7 @@ const run = (tests) => tests.map((ATest) => {
                                             : ->take step if can ? update forks (cells with multiple possible steps) 
                                                                  : pop a fork try taking a step
   */
-  
+
   /*
   walking = (nextstop) => {
      [nextstop].map((nxt) => {Visited = AddUniquely(Visited, NextStop)); return nxt}
@@ -140,14 +158,20 @@ const run = (tests) => tests.map((ATest) => {
   }
   */
       while (NextStop) {
-        Visited = AddUniquely(Visited, NextStop)
-        if (IsArrived(NextStop, BOrD, EndX, EndY)) return BOrD ? "Decimal" : "Binary" 
-        Forks = ForkMe(PSteps, NextStop, Forks)
-        PSteps = UnvisitedMovesFromHere(Visited)(MovesFromHere([NextStop[0], NextStop[1], BOrD]))
+        //transform Visited
+        theData.Visited = AddUniquely(theData.Visited, NextStop)
+        //test f or success
+        if (IsArrived(NextStop, BOrD, EndX, EndY)) return BOrD ? "Decimal" : "Binary"
+        //transform Forks 
+        theData.Forks = ForkMe(PSteps, NextStop, theData.Forks)
+
+        PSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NextStop[0], NextStop[1], BOrD]))
+        //transform NextStop
         NextStop = HasPStep(PSteps) ? FindPSteps(PSteps) : null
-        while (NextStop == null && Forks.length !== 0) {
-          NewStart = Forks.pop()
-          PSteps = UnvisitedMovesFromHere(Visited)(MovesFromHere([NewStart[0], NewStart[1], NewStart[2]]))
+
+        while (NextStop == null && theData.Forks.length !== 0) {
+          NewStart = theData.Forks.pop()
+          PSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NewStart[0], NewStart[1], NewStart[2]]))
           NextStop = HasPStep(PSteps) ? FindPSteps(PSteps) : null
         }
       if (NextStop == null) return acc  
