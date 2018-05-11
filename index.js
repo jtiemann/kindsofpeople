@@ -105,7 +105,8 @@ theData = {
   Matrix: Matrix,
   Visited: [],
   Forks: [],
-  CurrentLocation: [0,0],
+  result: "Neither",
+  //CurrentLocation: [0,0],
   StartEnd: {"StartX":0, "StartY":0, "EndX":0, "EndY":0},
   MatrixBaseNormalizer: (ATest) => [ATest[0][0]-1, ATest[0][1]-1, ATest[1][0]-1, ATest[1][1]-1],
 
@@ -142,101 +143,78 @@ const STATE = (function(initialState={}){
 ////////////
 // Run It //
 ////////////
-//STATE.read$.subscribe()
-const run = (tests) => tests.map((ATest) => {
-  /*
-   initialize 
-   --internal structures,
-   --normalize start/end coords 
-     (1,1) -> (0,0)
-  */
-    STATE.update(R.compose(R.assocPath(['Visited'], [])))
-    //theData.Visited = [];
-    STATE.update(R.compose(R.assocPath(['Forks'], [])))
-    //theData.Forks   = [];
-    let [StartX, StartY, EndX, EndY] = theData.MatrixBaseNormalizer(ATest)
-    STATE.update(R.compose(R.assocPath(['StartEnd'], {StartX,StartY,EndX,EndY})))
-    //theData.StartEnd = {StartX,StartY,EndX,EndY}
 
-  /*
-   first try Decimal then try Binary, default output is Neither
-   REDUCE [0,1] -> "Binary" | "Decimal" | "Neither"
-  */ 
-    let Ans = [0,1].reduce((acc, BOrD) => {
-  /*
-   Edge case: Start and End are the same
-  */
-      if (IsArrived([StartX, StartY, BOrD], BOrD, EndX, EndY)) return BOrD ? "Decimal" : "Binary" 
-  /* 
-   can I move from here? If I can then take a step, else this test with current kind (0/1) failed. 
-  */      
-      var PSteps =  UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([StartX, StartY, BOrD]))
-      theData.Visited.push([StartX, StartY, Matrix[StartX][StartY] ]) 
-      STATE.update(R.compose(R.assocPath(['Visited'], theData.Visited)))
+const visited  = STATE.read$
+                 .map(x=>x.Visited)
+                 .distinctUntilChanged()
 
-      var NextStop = HasPStep(PSteps) ? FindPSteps(PSteps) : null
-      if (NextStop == null) return acc 
-  /* 
-    now cycle through: step
-                           ->have I arrived ? return 
-                                            : ->take step if can ? update forks (cells with multiple possible steps) 
-                                                                 : pop a fork try taking a step
-  */
+const forks    = STATE.read$
+                 .map(x=>x.Forks)
+                 .distinctUntilChanged()
 
-  /*
-  walking = (nextstop) => {
-     [nextstop].map((nxt) => {Visited = AddUniquely(Visited, NextStop)); return nxt}
-               .map()...
+const startEnd = STATE.read$
+                 .map(x=>x.StartEnd)
+                 .distinctUntilChanged()
 
-  }
-  */
-      while (NextStop) {
-        //console.log("NextStop: ", NextStop)
-        //transform Visited
-        STATE.update(R.compose(R.assocPath(['Visited'], AddUniquely(theData.Visited, NextStop))))
-        //theData.Visited = AddUniquely(theData.Visited, NextStop)
-        //test for success
-        if (IsArrived(NextStop, BOrD, EndX, EndY)) return BOrD ? "Decimal" : "Binary"
-        //transform Forks
-        STATE.update(R.compose(R.assocPath(['Forks'], ForkMe(PSteps, NextStop, theData.Forks))))
-        //theData.Forks = ForkMe(PSteps, NextStop, theData.Forks)
+const edna = startEnd
+  .skip(1)
+  .withLatestFrom(visited, forks)
+  .map(([{StartX, StartY, EndX, EndY},visited,forks]) => {
+    return [0,1].reduce((acc, BOrD) => {
+        if (IsArrived([StartX, StartY, BOrD], BOrD, EndX, EndY)) return !!BOrD ? "Decimal" : "Binary"       
+        let PSteps =  UnvisitedMovesFromHere(visited)(MovesFromHere([StartX, StartY, BOrD]))
+        STATE.update(R.compose(R.assocPath(['Visited'], visited.concat([StartX, StartY, Matrix[StartX][StartY]]))))
+        
+        let NextStop = HasPStep(PSteps) ? FindPSteps(PSteps) : null
+        if (NextStop == null) return acc
 
-        PSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NextStop[0], NextStop[1], BOrD]))
-        //transform NextStop
-        NextStop = HasPStep(PSteps) ? FindPSteps(PSteps) : null
-
-        while (NextStop == null && theData.Forks.length !== 0) {
-          NewStart = theData.Forks.pop()
-          STATE.update(R.compose(R.assocPath(['Forks'], theData.Forks)))
-          PSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NewStart[0], NewStart[1], NewStart[2]]))
+        while (NextStop) {
+          STATE.update(R.compose(R.assocPath(['Visited'], AddUniquely(theData.Visited, NextStop))))
+          if (IsArrived(NextStop, BOrD, EndX, EndY)) return !!BOrD ? "Decimal" : "Binary"
+          STATE.update(R.compose(R.assocPath(['Forks'], ForkMe(PSteps, NextStop, theData.Forks))))
+          PSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NextStop[0], NextStop[1], BOrD]))
           NextStop = HasPStep(PSteps) ? FindPSteps(PSteps) : null
-        }
-      if (NextStop == null) return acc  
-      }
-    }, "Neither")
-  //console.log(StartX, StartY, EndX, EndY, Ans)
-  return Ans
-})  
 
-//console.log(run(TestLines).join("\n"))
+          while (NextStop == null && theData.Forks.length !== 0) {
+            NewStart = theData.Forks.pop()
+            STATE.update(R.compose(R.assocPath(['Forks'], theData.Forks)))
+            PSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NewStart[0], NewStart[1], NewStart[2]]))
+            NextStop = HasPStep(PSteps) ? FindPSteps(PSteps) : null
+          }
+        if (NextStop == null) return acc  
+        }
+      }, "Neither")
+  })
+
+const run = (tests) => tests.map((ATest) => {
+    STATE.update(R.compose(R.assocPath(['Visited'], []), R.assocPath(['Forks'], [])))
+    theData.Visited = []  // a hack
+    theData.Forks   = []  // same hack, different field
+    const [StartX, StartY, EndX, EndY] = theData.MatrixBaseNormalizer(ATest)
+    STATE.update(R.compose(R.assocPath(['StartEnd'], {StartX,StartY,EndX,EndY})))
+  })
+
+edna.subscribe(console.log)
+
+run(TestLines)
 
 ///////////////////////
 // LOGGING FUNCTIONS //
 ///////////////////////
 
-const jack = run(TestLines).join(" ")
-console.log("Ans: ", jack)
-assert(jack == "Binary Decimal Neither", "outcome: ")
+// const jack = run(TestLines).join(" ")
+// console.log("Ans: ", jack)
+// assert(jack == "Binary Decimal Neither Binary", "outcome: ")
 
+//console.log(theData)
 //console.log("NumCols = ", NumCols)  
 //console.log("NumRows = ", NumRows)  
-console.log(Matrix)  
+//console.log(Matrix)  
 //console.log("NumTests = ", NumTests)  
 //console.log("TestLines = ", TestLines)  
 //console.log("MatrixToXY = ", TheMatrix)  
 function assert(value, desc) {
   if (true) {
-    console.log("value: ",value)
     console.log(value ? desc + 'passed! '  :   desc + 'failure...');
   }
   else{
