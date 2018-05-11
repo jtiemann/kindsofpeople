@@ -2,6 +2,7 @@
   https://open.kattis.com/problems/10kindsofpeople
   just another maze type problem
   normalize maze, solve maze
+  1 3 = row 1 col 3 -> x = 2, y = 0 translated for array values
   0 (binary-man): paths are 0's
   1 (decimal-man) paths are 1's
 */
@@ -94,6 +95,7 @@ const ForkMe     = (PSteps, NextStop, Forks) =>
                     canStepInMultipleDirections ? AddUniquely(Forks, NextStop)
                                                 : Forks.filter((x) => JSON.stringify(x) !== JSON.stringify(NextStop))
 
+
 ////////////////////
 // Data Structure //
 ////////////////////
@@ -105,15 +107,42 @@ theData = {
   Forks: [],
   CurrentLocation: [0,0],
   StartEnd: {"StartX":0, "StartY":0, "EndX":0, "EndY":0},
-  MatrixBaseNormalizer: (ATest) => [ATest[0][0]-1, ATest[0][1]-1, ATest[1][0]-1, ATest[1][1]-1]
+  MatrixBaseNormalizer: (ATest) => [ATest[0][0]-1, ATest[0][1]-1, ATest[1][0]-1, ATest[1][1]-1],
+
   
 }
 
 
+///////////////
+// STATE API //
+///////////////
+
+const Rx = require('rxjs')
+const R = require('ramda')
+R.hasPath = path => R.compose(x => !!x, R.path(path))
+const INITIAL_STATE = theData
+
+const STATE = (function(initialState={}){
+  let write$ = (new Rx.Subject())
+  let updateFn = changeFn => {
+    const updateState = changeFn => currentState => {
+    return {...(changeFn(currentState)) } 
+     // return Object.assign({}, changeFn(currentState))
+    }
+    write$.next(updateState(changeFn))
+  }
+  let theTbone$ = write$
+    .startWith(theState => theState)
+    .scan((acc, fn) => fn(acc), initialState)
+    .publish().refCount()
+    
+  return { read$: theTbone$, update: updateFn }
+}(INITIAL_STATE))
+
 ////////////
 // Run It //
 ////////////
-
+//STATE.read$.subscribe()
 const run = (tests) => tests.map((ATest) => {
   /*
    initialize 
@@ -121,10 +150,13 @@ const run = (tests) => tests.map((ATest) => {
    --normalize start/end coords 
      (1,1) -> (0,0)
   */
-    theData.Visited = [];
-    theData.Forks   = [];
+    STATE.update(R.compose(R.assocPath(['Visited'], [])))
+    //theData.Visited = [];
+    STATE.update(R.compose(R.assocPath(['Forks'], [])))
+    //theData.Forks   = [];
     let [StartX, StartY, EndX, EndY] = theData.MatrixBaseNormalizer(ATest)
-    theData.StartEnd = {StartX,StartY,EndX,EndY}
+    STATE.update(R.compose(R.assocPath(['StartEnd'], {StartX,StartY,EndX,EndY})))
+    //theData.StartEnd = {StartX,StartY,EndX,EndY}
 
   /*
    first try Decimal then try Binary, default output is Neither
@@ -140,6 +172,7 @@ const run = (tests) => tests.map((ATest) => {
   */      
       var PSteps =  UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([StartX, StartY, BOrD]))
       theData.Visited.push([StartX, StartY, Matrix[StartX][StartY] ]) 
+      STATE.update(R.compose(R.assocPath(['Visited'], theData.Visited)))
 
       var NextStop = HasPStep(PSteps) ? FindPSteps(PSteps) : null
       if (NextStop == null) return acc 
@@ -158,12 +191,15 @@ const run = (tests) => tests.map((ATest) => {
   }
   */
       while (NextStop) {
+        //console.log("NextStop: ", NextStop)
         //transform Visited
-        theData.Visited = AddUniquely(theData.Visited, NextStop)
-        //test f or success
+        STATE.update(R.compose(R.assocPath(['Visited'], AddUniquely(theData.Visited, NextStop))))
+        //theData.Visited = AddUniquely(theData.Visited, NextStop)
+        //test for success
         if (IsArrived(NextStop, BOrD, EndX, EndY)) return BOrD ? "Decimal" : "Binary"
-        //transform Forks 
-        theData.Forks = ForkMe(PSteps, NextStop, theData.Forks)
+        //transform Forks
+        STATE.update(R.compose(R.assocPath(['Forks'], ForkMe(PSteps, NextStop, theData.Forks))))
+        //theData.Forks = ForkMe(PSteps, NextStop, theData.Forks)
 
         PSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NextStop[0], NextStop[1], BOrD]))
         //transform NextStop
@@ -171,6 +207,7 @@ const run = (tests) => tests.map((ATest) => {
 
         while (NextStop == null && theData.Forks.length !== 0) {
           NewStart = theData.Forks.pop()
+          STATE.update(R.compose(R.assocPath(['Forks'], theData.Forks)))
           PSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NewStart[0], NewStart[1], NewStart[2]]))
           NextStop = HasPStep(PSteps) ? FindPSteps(PSteps) : null
         }
@@ -181,12 +218,15 @@ const run = (tests) => tests.map((ATest) => {
   return Ans
 })  
 
-console.log(run(TestLines).join("\n"))
+//console.log(run(TestLines).join("\n"))
 
 ///////////////////////
 // LOGGING FUNCTIONS //
 ///////////////////////
-assert(run(TestLines).join(" ") == "Binary Decimal Neither", "outcome: ")
+
+const jack = run(TestLines).join(" ")
+console.log("Ans: ", jack)
+assert(jack == "Binary Decimal Neither", "outcome: ")
 
 //console.log("NumCols = ", NumCols)  
 //console.log("NumRows = ", NumRows)  
@@ -196,6 +236,7 @@ console.log(Matrix)
 //console.log("MatrixToXY = ", TheMatrix)  
 function assert(value, desc) {
   if (true) {
+    console.log("value: ",value)
     console.log(value ? desc + 'passed! '  :   desc + 'failure...');
   }
   else{
