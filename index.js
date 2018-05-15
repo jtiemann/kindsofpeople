@@ -156,13 +156,10 @@ const startEnd = STATE.read$
                  .map(x=>x.StartEnd)
                  .distinctUntilChanged()
 
-const edna = startEnd
-  .skip(1)
-  .withLatestFrom(visited, forks)
-  .map(([{StartX, StartY, EndX, EndY},visited,forks]) => {
-    return [0,1].reduce((acc, BOrD) => {
-        if (IsArrived([StartX, StartY, BOrD], BOrD, EndX, EndY)) return !!BOrD ? "Decimal" : "Binary"       
-        let PSteps =  UnvisitedMovesFromHere(visited)(MovesFromHere([StartX, StartY, BOrD]))
+const reducer = (kindValues, [{StartX, StartY, EndX, EndY},visited,forks]) => {
+  return kindValues.reduce((acc, kindValue) => {
+        if (IsArrived([StartX, StartY, kindValue], kindValue, EndX, EndY)) return !!kindValue ? "Decimal" : "Binary"       
+        let PSteps =  UnvisitedMovesFromHere(visited)(MovesFromHere([StartX, StartY, kindValue]))
         STATE.update(R.compose(R.assocPath(['Visited'], visited.concat([StartX, StartY, Matrix[StartX][StartY]]))))
         
         let NextStop = HasPStep(PSteps) ? FindPSteps(PSteps) : null
@@ -170,9 +167,9 @@ const edna = startEnd
 
         while (NextStop) {
           STATE.update(R.compose(R.assocPath(['Visited'], AddUniquely(theData.Visited, NextStop))))
-          if (IsArrived(NextStop, BOrD, EndX, EndY)) return !!BOrD ? "Decimal" : "Binary"
+          if (IsArrived(NextStop, kindValue, EndX, EndY)) return !!kindValue ? "Decimal" : "Binary"
           STATE.update(R.compose(R.assocPath(['Forks'], ForkMe(PSteps, NextStop, theData.Forks))))
-          PSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NextStop[0], NextStop[1], BOrD]))
+          PSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NextStop[0], NextStop[1], kindValue]))
           NextStop = HasPStep(PSteps) ? FindPSteps(PSteps) : null
 
           while (NextStop == null && theData.Forks.length !== 0) {
@@ -184,6 +181,15 @@ const edna = startEnd
         if (NextStop == null) return acc  
         }
       }, "Neither")
+}
+
+const edna = startEnd
+  .skip(1)
+  .withLatestFrom(visited, forks)
+  .map(([{StartX, StartY, EndX, EndY},visited,forks]) => {
+    let kinds = {binary: 0, decimal:1}
+    let kindValues = Object.values(kinds)
+    return reducer(kindValues, [{StartX, StartY, EndX, EndY},visited,forks])
   })
 
 const run = (tests) => tests.map((ATest) => {
