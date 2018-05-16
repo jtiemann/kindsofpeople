@@ -98,11 +98,10 @@ const MovesFromHere = function(Here) {
 }
 const UnvisitedMovesFromHere = (AVisited) => (PossibleMoves) => 
                                   PossibleMoves.filter((x) => !AVisited.find((y) => JSON.stringify(y)==JSON.stringify(x[0]))) 
-const StartEndSame = (sx,sy,ex,ey) => (sx == ex && sy == ey) ? true : false
 
 const canStepInMultipleDirections = (Arr) => Arr.filter((x) => x.length > 0).length > 1
 const IsArrived  = (NextStop, BOrD, EndX, EndY) => (NextStop[0] == EndX && NextStop[1] == EndY && NextStop[2] == BOrD)
-const IsNotEmpty = (Arr) => Arr.length !== 0
+//const IsNotEmpty = (Arr) => Arr.length !== 0
 const HasPStep   = (Psteps) => Psteps ? Psteps.find((x) => x.length > 0) : null
 const FindPSteps = (PSteps) => PSteps.find((x) => x.length > 0)[0]
 const ForkMe     = (PSteps, NextStop, Forks) => 
@@ -166,10 +165,10 @@ const walkFork = (theData,kindValue, [{StartX, StartY, EndX, EndY}]) => {
 
 const reducer = (kindValues, [{StartX, StartY, EndX, EndY}], theData) => {
   return kindValues.reduce((acc, kindValue) => {
-        return IsArrived([StartX, StartY, theData.Matrix[StartX][StartY]], kindValue, EndX, EndY) ? (!!kindValue ? "Decimal" : "Binary")
-                       : !HasPStep(MovesFromHere([StartX, StartY, kindValue])) ? acc 
-                       : walk([StartX, StartY, theData.Matrix[StartX][StartY]], theData, kindValue, [{StartX, StartY, EndX, EndY}])
-      }, "Neither")
+    return IsArrived([StartX, StartY, theData.Matrix[StartX][StartY]], kindValue, EndX, EndY) ? (!!kindValue ? "Decimal" : "Binary")
+                   : !HasPStep(MovesFromHere([StartX, StartY, kindValue])) ? acc 
+                   : walk([StartX, StartY, theData.Matrix[StartX][StartY]], theData, kindValue, [{StartX, StartY, EndX, EndY}])
+  }, "Neither")
 }
 
 const processor = startEnd
@@ -180,10 +179,10 @@ const processor = startEnd
   })
 
 const run = (tests) => tests.map((ATest) => {
-    theData.Visited = []  
-    theData.Forks   = []  
-    const [StartX, StartY, EndX, EndY] = MatrixBaseNormalizer(ATest)
-    STATE.update(R.compose(R.assocPath(['StartEnd'], {StartX,StartY,EndX,EndY})))
+  theData.Visited = []  
+  theData.Forks   = []  
+  const [StartX, StartY, EndX, EndY] = MatrixBaseNormalizer(ATest)
+  STATE.update(R.compose(R.assocPath(['StartEnd'], {StartX,StartY,EndX,EndY})))
   })
 
 processor.subscribe(console.log)
