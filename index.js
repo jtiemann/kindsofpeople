@@ -88,7 +88,6 @@ const CanIMove = (Matrix) => (Loc) => (Dir) => {
   }
   return isMoveOK
 }
- 
 const CanIMoveXYDir = CanIMove(theData.Matrix)
 const MovesFromHere = function(Here) {
   let IsInMatrix = theData.Matrix[Here[0]][Here[1]] === Here[2] 
@@ -101,7 +100,6 @@ const UnvisitedMovesFromHere = (AVisited) => (PossibleMoves) =>
 
 const canStepInMultipleDirections = (Arr) => Arr.filter((x) => x.length > 0).length > 1
 const IsArrived  = (NextStop, BOrD, EndX, EndY) => (NextStop[0] == EndX && NextStop[1] == EndY && NextStop[2] == BOrD)
-//const IsNotEmpty = (Arr) => Arr.length !== 0
 const HasPStep   = (Psteps) => Psteps ? Psteps.find((x) => x.length > 0) : null
 const FindPSteps = (PSteps) => PSteps.find((x) => x.length > 0)[0]
 const ForkMe     = (PSteps, NextStop, Forks) => 
@@ -163,7 +161,7 @@ const walkFork = (theData,kindValue, [{StartX, StartY, EndX, EndY}]) => {
                                                            : walk(NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}])
 }
 
-const reducer = (kindValues, [{StartX, StartY, EndX, EndY}], theData) => {
+const reducer = (kindValues, {StartX, StartY, EndX, EndY}, theData) => {
   return kindValues.reduce((acc, kindValue) => {
     return IsArrived([StartX, StartY, theData.Matrix[StartX][StartY]], kindValue, EndX, EndY) ? (!!kindValue ? "Decimal" : "Binary")
                    : !HasPStep(MovesFromHere([StartX, StartY, kindValue])) ? acc 
@@ -171,21 +169,17 @@ const reducer = (kindValues, [{StartX, StartY, EndX, EndY}], theData) => {
   }, "Neither")
 }
 
-const processor = startEnd
-  .skip(1)
-  .map(({StartX, StartY, EndX, EndY}) => {
-    let kinds = {binary: 0, decimal:1}
-    return reducer(Object.values(kinds), [{StartX, StartY, EndX, EndY}], theData)
-  })
+const processor = (startEnd, theData) => reducer(Object.values({binary: 0, decimal:1}), startEnd, theData)
+  
 
 const run = (tests) => tests.map((ATest) => {
   theData.Visited = []  
   theData.Forks   = []  
   const [StartX, StartY, EndX, EndY] = MatrixBaseNormalizer(ATest)
-  STATE.update(R.compose(R.assocPath(['StartEnd'], {StartX,StartY,EndX,EndY})))
+  console.log(processor({StartX,StartY,EndX,EndY}, theData))
   })
 
-processor.subscribe(console.log)
+//processor.subscribe(console.log)
 
 run(theData.TestLines)
 
