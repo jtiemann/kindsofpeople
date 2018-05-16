@@ -32,7 +32,21 @@ var NumTests   = parseInt(Lines[NumRows+1],10)
 var TestLines  = Lines.slice(NumRows+2).filter((n)=>n !== '')
                                       .map((x)=> x.split(" ")
                                                   .map((y)=>parseInt(y,10)))
-                                      .map(([a,b,c,d]) => [[a,b],[c,d]])         
+                                      .map(([a,b,c,d]) => [[a,b],[c,d]])   
+////////////////////
+// Data Structure //
+////////////////////
+
+//Initial State
+theData = {
+  Matrix: Matrix,
+  TestLines: TestLines,
+  Visited: [],
+  Forks: [],
+  //result: "Neither",
+  //CurrentLocation: [0,0],
+  //StartEnd: {"StartX":0, "StartY":0, "EndX":0, "EndY":0},
+}
 
 //////////////////////
 // HELPER FUNCTIONS //
@@ -63,21 +77,21 @@ const AddUniquely = (Arr, Unit) => {
 const CanIMove = (Matrix) => (Loc) => (Dir) => {
  let isMoveOK
   switch (Dir) {
-    case North: isMoveOK = Loc[0]+1 <  NumRows && Matrix[Loc[0]+1][Loc[1]] === Loc[2] ? [[Loc[0]+1,Loc[1], Loc[2]]] : []
+    case North: isMoveOK = Loc[0]+1 <  NumRows && theData.Matrix[Loc[0]+1][Loc[1]] === Loc[2] ? [[Loc[0]+1,Loc[1], Loc[2]]] : []
                 break; 
-    case South: isMoveOK = Loc[0]-1 >= 0       && Matrix[Loc[0]-1][Loc[1]] === Loc[2] ? [[Loc[0]-1,Loc[1], Loc[2]]]: []
+    case South: isMoveOK = Loc[0]-1 >= 0       && theData.Matrix[Loc[0]-1][Loc[1]] === Loc[2] ? [[Loc[0]-1,Loc[1], Loc[2]]]: []
                 break; 
-    case East:  isMoveOK = Loc[1]+1 <  NumCols && Matrix[Loc[0]][Loc[1]+1] === Loc[2] ? [[Loc[0],Loc[1]+1, Loc[2]]]: []
+    case East:  isMoveOK = Loc[1]+1 <  NumCols && theData.Matrix[Loc[0]][Loc[1]+1] === Loc[2] ? [[Loc[0],Loc[1]+1, Loc[2]]]: []
                 break; 
-    case West:  isMoveOK = Loc[1]-1 >= 0       && Matrix[Loc[0]][Loc[1]-1] === Loc[2] ? [[Loc[0],Loc[1]-1, Loc[2]]]: []
+    case West:  isMoveOK = Loc[1]-1 >= 0       && theData.Matrix[Loc[0]][Loc[1]-1] === Loc[2] ? [[Loc[0],Loc[1]-1, Loc[2]]]: []
                 break; 
   }
   return isMoveOK
 }
  
-const CanIMoveXYDir = CanIMove(Matrix)
+const CanIMoveXYDir = CanIMove(theData.Matrix)
 const MovesFromHere = function(Here) {
-  let IsInMatrix = Matrix[Here[0]][Here[1]] === Here[2] 
+  let IsInMatrix = theData.Matrix[Here[0]][Here[1]] === Here[2] 
   if (!IsInMatrix) return [[],[],[],[]]
   let CanIMoveDir = CanIMoveXYDir(Here)
   return [North, South, East, West].map((D) => CanIMoveDir(D))
@@ -94,22 +108,6 @@ const FindPSteps = (PSteps) => PSteps.find((x) => x.length > 0)[0]
 const ForkMe     = (PSteps, NextStop, Forks) => 
                     canStepInMultipleDirections ? AddUniquely(Forks, NextStop)
                                                 : Forks.filter((x) => JSON.stringify(x) !== JSON.stringify(NextStop))
-
-
-////////////////////
-// Data Structure //
-////////////////////
-
-//Initial State
-theData = {
-  //Matrix: Matrix,
-  Visited: [],
-  Forks: [],
-  //result: "Neither",
-  //CurrentLocation: [0,0],
-  //StartEnd: {"StartX":0, "StartY":0, "EndX":0, "EndY":0},
-  MatrixBaseNormalizer: (ATest) => [ATest[0][0]-1, ATest[0][1]-1, ATest[1][0]-1, ATest[1][1]-1],
-}
 
 
 ///////////////
@@ -168,13 +166,13 @@ const walkFork = (theData,kindValue, [{StartX, StartY, EndX, EndY}]) => {
 
 const reducer = (kindValues, [{StartX, StartY, EndX, EndY}], theData) => {
   return kindValues.reduce((acc, kindValue) => {
-        return IsArrived([StartX, StartY, Matrix[StartX][StartY]], kindValue, EndX, EndY) ? (!!kindValue ? "Decimal" : "Binary")
+        return IsArrived([StartX, StartY, theData.Matrix[StartX][StartY]], kindValue, EndX, EndY) ? (!!kindValue ? "Decimal" : "Binary")
                        : !HasPStep(MovesFromHere([StartX, StartY, kindValue])) ? acc 
-                       : walk([StartX, StartY, Matrix[StartX][StartY]], theData, kindValue, [{StartX, StartY, EndX, EndY}])
+                       : walk([StartX, StartY, theData.Matrix[StartX][StartY]], theData, kindValue, [{StartX, StartY, EndX, EndY}])
       }, "Neither")
 }
 
-const edna = startEnd
+const processor = startEnd
   .skip(1)
   .map(({StartX, StartY, EndX, EndY}) => {
     let kinds = {binary: 0, decimal:1}
@@ -184,13 +182,13 @@ const edna = startEnd
 const run = (tests) => tests.map((ATest) => {
     theData.Visited = []  
     theData.Forks   = []  
-    const [StartX, StartY, EndX, EndY] = theData.MatrixBaseNormalizer(ATest)
+    const [StartX, StartY, EndX, EndY] = MatrixBaseNormalizer(ATest)
     STATE.update(R.compose(R.assocPath(['StartEnd'], {StartX,StartY,EndX,EndY})))
   })
 
-edna.subscribe(console.log)
+processor.subscribe(console.log)
 
-run(TestLines)
+run(theData.TestLines)
 
 ///////////////////////
 // LOGGING FUNCTIONS //
@@ -203,10 +201,9 @@ run(TestLines)
 //console.log(theData)
 //console.log("NumCols = ", NumCols)  
 //console.log("NumRows = ", NumRows)  
-//console.log(Matrix)  
+//console.log(theData.Matrix)  
 //console.log("NumTests = ", NumTests)  
 //console.log("TestLines = ", TestLines)  
-//console.log("MatrixToXY = ", TheMatrix)  
 function assert(value, desc) {
   if (true) {
     console.log(value ? desc + 'passed! '  :   desc + 'failure...');
