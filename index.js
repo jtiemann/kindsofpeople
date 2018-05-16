@@ -106,40 +106,9 @@ const ForkMe     = (PSteps, NextStop, Forks) =>
                     canStepInMultipleDirections ? AddUniquely(Forks, NextStop)
                                                 : Forks.filter((x) => JSON.stringify(x) !== JSON.stringify(NextStop))
 
-
-///////////////
-// STATE API //
-///////////////
-
-const Rx = require('rxjs')
-const R = require('ramda')
-R.hasPath = path => R.compose(x => !!x, R.path(path))
-const INITIAL_STATE = theData
-
-const STATE = (function(initialState={}){
-  let write$ = (new Rx.Subject())
-  let updateFn = changeFn => {
-    const updateState = changeFn => currentState => {
-    return {...(changeFn(currentState)) } 
-     // return Object.assign({}, changeFn(currentState))
-    }
-    write$.next(updateState(changeFn))
-  }
-  let theTbone$ = write$
-    .startWith(theState => theState)
-    .scan((acc, fn) => fn(acc), initialState)
-    .publish().refCount()
-    
-  return { read$: theTbone$, update: updateFn }
-}(INITIAL_STATE))
-
 ////////////
 // Run It //
 ////////////
-
-const startEnd = STATE.read$
-                 .map(x=>x.StartEnd)
-                 .distinctUntilChanged()
 
 const walk = (NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}]) => {
   if (IsArrived(NextStop, kindValue, EndX, EndY)) return !!kindValue ? "Decimal" : "Binary"
@@ -179,7 +148,6 @@ const run = (tests) => tests.map((ATest) => {
   return processor({StartX,StartY,EndX,EndY}, theData)
   })
 
-//processor.subscribe(console.log)
 
 const results = run(theData.TestLines)
 console.log(results.join("\n"))
@@ -188,10 +156,6 @@ assert(results.join(", ") === "Binary, Decimal, Neither", "Maze " )
 ///////////////////////
 // LOGGING FUNCTIONS //
 ///////////////////////
-
-// const jack = run(TestLines).join(" ")
-// console.log("Ans: ", jack)
-// assert(jack == "Binary Decimal Neither Binary", "outcome: ")
 
 //console.log(theData)
 //console.log("NumCols = ", NumCols)  
