@@ -176,12 +176,14 @@ const run = (tests) => tests.map((ATest) => {
   theData.Visited = []  
   theData.Forks   = []  
   const [StartX, StartY, EndX, EndY] = MatrixBaseNormalizer(ATest)
-  console.log(processor({StartX,StartY,EndX,EndY}, theData))
+  return processor({StartX,StartY,EndX,EndY}, theData)
   })
 
 //processor.subscribe(console.log)
 
-run(theData.TestLines)
+const results = run(theData.TestLines)
+console.log(results.join("\n"))
+assert(results.join(", ") === "Binary, Decimal, Neither", "Maze " )
 
 ///////////////////////
 // LOGGING FUNCTIONS //
