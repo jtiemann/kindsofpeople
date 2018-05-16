@@ -102,15 +102,13 @@ const ForkMe     = (PSteps, NextStop, Forks) =>
 
 //Initial State
 theData = {
-  Matrix: Matrix,
+  //Matrix: Matrix,
   Visited: [],
   Forks: [],
-  result: "Neither",
+  //result: "Neither",
   //CurrentLocation: [0,0],
-  StartEnd: {"StartX":0, "StartY":0, "EndX":0, "EndY":0},
+  //StartEnd: {"StartX":0, "StartY":0, "EndX":0, "EndY":0},
   MatrixBaseNormalizer: (ATest) => [ATest[0][0]-1, ATest[0][1]-1, ATest[1][0]-1, ATest[1][1]-1],
-
-  
 }
 
 
@@ -144,56 +142,48 @@ const STATE = (function(initialState={}){
 // Run It //
 ////////////
 
-const visited  = STATE.read$
-                 .map(x=>x.Visited)
-                 .distinctUntilChanged()
-
-const forks    = STATE.read$
-                 .map(x=>x.Forks)
-                 .distinctUntilChanged()
-
 const startEnd = STATE.read$
                  .map(x=>x.StartEnd)
                  .distinctUntilChanged()
 
-const reducer = (kindValues, [{StartX, StartY, EndX, EndY},visited,forks]) => {
+const walk = (NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}]) => {
+  if (IsArrived(NextStop, kindValue, EndX, EndY)) return !!kindValue ? "Decimal" : "Binary"
+  PSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NextStop[0], NextStop[1], kindValue]))
+  AddUniquely(theData.Visited, NextStop)
+  ForkMe(PSteps, NextStop, theData.Forks)
+  NextStop = HasPStep(PSteps) ? FindPSteps(PSteps) : null
+  return (NextStop === null && theData.Forks.length !== 0) ? walkFork(theData, kindValue, [{StartX, StartY, EndX, EndY}])
+                                                           : (NextStop === null) ? "Neither"
+                                                           : walk(NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}])
+}
+
+const walkFork = (theData,kindValue, [{StartX, StartY, EndX, EndY}]) => {
+  NewStart = theData.Forks.pop()
+  PSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NewStart[0], NewStart[1], NewStart[2]]))
+  NextStop = HasPStep(PSteps) ? FindPSteps(PSteps) : null
+  return (NextStop === null && theData.Forks.length !== 0) ? walkFork(theData, kindValue, [{StartX, StartY, EndX, EndY}])
+                                                           : (NextStop === null) ? "Neither"
+                                                           : walk(NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}])
+}
+
+const reducer = (kindValues, [{StartX, StartY, EndX, EndY}], theData) => {
   return kindValues.reduce((acc, kindValue) => {
-        if (IsArrived([StartX, StartY, kindValue], kindValue, EndX, EndY)) return !!kindValue ? "Decimal" : "Binary"       
-        let PSteps =  UnvisitedMovesFromHere(visited)(MovesFromHere([StartX, StartY, kindValue]))
-        
-        let NextStop = HasPStep(PSteps) ? FindPSteps(PSteps) : null
-        if (NextStop == null) return acc
-
-        while (NextStop) {
-          AddUniquely(theData.Visited, NextStop)
-          if (IsArrived(NextStop, kindValue, EndX, EndY)) return !!kindValue ? "Decimal" : "Binary"
-          ForkMe(PSteps, NextStop, theData.Forks)
-          PSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NextStop[0], NextStop[1], kindValue]))
-          NextStop = HasPStep(PSteps) ? FindPSteps(PSteps) : null
-
-          while (NextStop == null && theData.Forks.length !== 0) {
-            NewStart = theData.Forks.pop()
-            PSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NewStart[0], NewStart[1], NewStart[2]]))
-            NextStop = HasPStep(PSteps) ? FindPSteps(PSteps) : null
-          }
-        if (NextStop == null) return acc  
-        }
+        return IsArrived([StartX, StartY, Matrix[StartX][StartY]], kindValue, EndX, EndY) ? (!!kindValue ? "Decimal" : "Binary")
+                       : !HasPStep(MovesFromHere([StartX, StartY, kindValue])) ? acc 
+                       : walk([StartX, StartY, Matrix[StartX][StartY]], theData, kindValue, [{StartX, StartY, EndX, EndY}])
       }, "Neither")
 }
 
 const edna = startEnd
   .skip(1)
-  .withLatestFrom(visited, forks)
-  .map(([{StartX, StartY, EndX, EndY},visited,forks]) => {
+  .map(({StartX, StartY, EndX, EndY}) => {
     let kinds = {binary: 0, decimal:1}
-    let kindValues = Object.values(kinds)
-    return reducer(kindValues, [{StartX, StartY, EndX, EndY},[],[]])
+    return reducer(Object.values(kinds), [{StartX, StartY, EndX, EndY}], theData)
   })
 
 const run = (tests) => tests.map((ATest) => {
-    STATE.update(R.compose(R.assocPath(['Visited'], []), R.assocPath(['Forks'], [])))
-    theData.Visited = []  // a hack
-    theData.Forks   = []  // same hack, different field
+    theData.Visited = []  
+    theData.Forks   = []  
     const [StartX, StartY, EndX, EndY] = theData.MatrixBaseNormalizer(ATest)
     STATE.update(R.compose(R.assocPath(['StartEnd'], {StartX,StartY,EndX,EndY})))
   })
