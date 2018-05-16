@@ -106,10 +106,6 @@ const ForkMe     = (PSteps, NextStop, Forks) =>
                     canStepInMultipleDirections ? AddUniquely(Forks, NextStop)
                                                 : Forks.filter((x) => JSON.stringify(x) !== JSON.stringify(NextStop))
 
-////////////
-// Run It //
-////////////
-
 const walk = (NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}]) => {
   if (IsArrived(NextStop, kindValue, EndX, EndY)) return !!kindValue ? "Decimal" : "Binary"
   PSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NextStop[0], NextStop[1], kindValue]))
@@ -139,7 +135,6 @@ const reducer = (kindValues, {StartX, StartY, EndX, EndY}, theData) => {
 }
 
 const processor = (startEnd, theData) => reducer(Object.values({binary: 0, decimal:1}), startEnd, theData)
-  
 
 const run = (tests) => tests.map((ATest) => {
   theData.Visited = []  
@@ -148,6 +143,9 @@ const run = (tests) => tests.map((ATest) => {
   return processor({StartX,StartY,EndX,EndY}, theData)
   })
 
+////////////
+// Run It //
+////////////
 
 const results = run(theData.TestLines)
 console.log(results.join("\n"))
