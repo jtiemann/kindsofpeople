@@ -137,8 +137,8 @@ const ForkMe     = (PossibleSteps, NextStop, Forks) =>
 const createCanvas = (idx) => {
   let jack = document.createElement("canvas")
   jack.id = idx
-  jack.width = "1000"
-  jack.height = "1000"
+  jack.width = "600"
+  jack.height = "400"
   document.body.appendChild(jack)
 }
 
@@ -179,10 +179,8 @@ async function walk(idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, E
   await sleep(100)
   if (IsArrived(NextStop, kindValue, EndX, EndY)) return !!kindValue ? "Decimal" : "Binary"
   const PossibleSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NextStop[0], NextStop[1], kindValue]))
-  console.log(PossibleSteps)
   theData.Visited = AddUniquely(theData.Visited, NextStop)
   theData.Forks = ForkMe(PossibleSteps, NextStop, theData.Forks)
-  //console.log(theData.Forks[theData.Forks.length - 1])
   NextStop = HasPossibleStep(PossibleSteps) ? FindPossibleSteps(PossibleSteps) : null
   return (NextStop === null && theData.Forks.length !== 0) ? walkFork(idx, theData, kindValue, [{StartX, StartY, EndX, EndY}])
                                                            : (NextStop === null) ? "Neither"
