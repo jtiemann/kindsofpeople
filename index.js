@@ -10,14 +10,30 @@
 // GET DATA //
 //////////////
 
-var fs = require('fs')
+//var fs = require('fs')
 var OrigData;
-try {  
-   OrigData = fs.readFileSync('data.txt', 'utf8');
-   //OrigData = fs.readFileSync('samples/sample-00.in', 'utf8');
-} catch(e) {
-    console.log('Error:', e.stack);
-}
+// try {  
+//    OrigData = fs.readFileSync('data.txt', 'utf8');
+//    //OrigData = fs.readFileSync('samples/sample-00.in', 'utf8');
+// } catch(e) {
+//     console.log('Error:', e.stack);
+// }
+OrigData = `10 20
+11111111111111111111
+11000000000000000101
+11111111111111110000
+11111111111111110000
+11000000000000000111
+00011111111111111111
+00111111111111111111
+10000000000000001111
+11111111111111111111
+11111111111111111111
+3
+2 3 8 16
+8 1 7 3
+1 1 10 20
+`
 
 ////////////////
 // PARSE DATA //
@@ -64,9 +80,9 @@ const Neither    = Symbol()
 
 const MatrixBaseNormalizer = ATest => [ATest[0][0]-1, ATest[0][1]-1, ATest[1][0]-1, ATest[1][1]-1]
 const AddUniquely = (Arr, Unit) => {
-                      Arr.push(Unit) 
-                      let pf = new Set(Arr)
-                      return Array.from(pf)
+                      //if (!Arr.find((u) => JSON.stringify(Unit) == JSON.stringify(u))) 
+                        //Arr.push(Unit)
+                      return Arr.concat([Unit])
 }
 
 
@@ -100,47 +116,92 @@ const UnvisitedMovesFromHere = (AVisited) => (PossibleMoves) =>
 
 const canStepInMultipleDirections = (Arr) => Arr.filter((x) => x.length > 0).length > 1
 const IsArrived  = (NextStop, BOrD, EndX, EndY) => (NextStop[0] == EndX && NextStop[1] == EndY && NextStop[2] == BOrD)
-const HasPStep   = (Psteps) => Psteps ? Psteps.find((x) => x.length > 0) : null
-const FindPSteps = (PSteps) => PSteps.find((x) => x.length > 0)[0]
-const ForkMe     = (PSteps, NextStop, Forks) => 
+const HasPossibleStep   = (PossibleSteps) => PossibleSteps ? PossibleSteps.find((x) => x.length > 0) : null
+const FindPossibleSteps = (PossibleSteps) => PossibleSteps.find((x) => x.length > 0)[0]
+const ForkMe     = (PossibleSteps, NextStop, Forks) => 
                     canStepInMultipleDirections ? AddUniquely(Forks, NextStop)
                                                 : Forks.filter((x) => JSON.stringify(x) !== JSON.stringify(NextStop))
 
-const walk = (NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}]) => {
+////////////////////
+// RENDER HELPERS //
+////////////////////
+
+const createCanvas = (idx) => {
+  let jack = document.createElement("canvas")
+  jack.id = idx
+  jack.width = "1000"
+  jack.height = "1000"
+  document.body.appendChild(jack)
+}
+
+const renderMaze= (canvasSelector) => (matrix) => {
+  matrix.map((row, rowidx) => row.map((col, colidx) => col==0 ? renderGreenCell([rowidx,colidx]) : renderRedCell([rowidx,colidx]) ))
+}
+
+const renderCell = ([fr,fg,fb]=[0,0,0]) => (canvasSelector) => ([y,x]=[0,0]) => {
+  var c2=document.getElementById(canvasSelector);
+  var ctx=c2.getContext("2d");
+  ctx.fillStyle=`rgba(${fr},${fg},${fb}, 0.7)`;
+  ctx.fillRect(100+x*30,100+y*30,29,29);
+}
+const renderLetter = (canvasSelector) => (letter) => ([y,x]=[0,0]) => {
+  var canvas = document.getElementById(canvasSelector);
+  var ctx = canvas.getContext("2d");
+  ctx.font = "20px Arial";
+  ctx.fillStyle="black";
+  return ctx.fillText(letter,110+x*30,122+y*30);
+}
+
+///////////////////////
+// TRAVERSAL HELPERS //
+///////////////////////
+
+
+const walk = (idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}]) => {
+  //kindValue == 0 ? renderCell([128,0,128])(idx)(NextStop) : renderCell([128,128,128])(idx)(NextStop)
   if (IsArrived(NextStop, kindValue, EndX, EndY)) return !!kindValue ? "Decimal" : "Binary"
-  PSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NextStop[0], NextStop[1], kindValue]))
-  AddUniquely(theData.Visited, NextStop)
-  ForkMe(PSteps, NextStop, theData.Forks)
-  NextStop = HasPStep(PSteps) ? FindPSteps(PSteps) : null
-  return (NextStop === null && theData.Forks.length !== 0) ? walkFork(theData, kindValue, [{StartX, StartY, EndX, EndY}])
+  const PossibleSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NextStop[0], NextStop[1], kindValue]))
+  theData.Visited = AddUniquely(theData.Visited, NextStop)
+  theData.Forks = ForkMe(PossibleSteps, NextStop, theData.Forks)
+  //console.log(theData.Forks[theData.Forks.length - 1])
+  NextStop = HasPossibleStep(PossibleSteps) ? FindPossibleSteps(PossibleSteps) : null
+  return (NextStop === null && theData.Forks.length !== 0) ? walkFork(idx, theData, kindValue, [{StartX, StartY, EndX, EndY}])
                                                            : (NextStop === null) ? "Neither"
-                                                           : walk(NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}])
+                                                           : walk(idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}])
 }
 
-const walkFork = (theData,kindValue, [{StartX, StartY, EndX, EndY}]) => {
-  NewStart = theData.Forks.pop()
-  PSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NewStart[0], NewStart[1], NewStart[2]]))
-  NextStop = HasPStep(PSteps) ? FindPSteps(PSteps) : null
-  return (NextStop === null && theData.Forks.length !== 0) ? walkFork(theData, kindValue, [{StartX, StartY, EndX, EndY}])
+const walkFork = (idx, theData,kindValue, [{StartX, StartY, EndX, EndY}]) => {
+  const NewStart = theData.Forks.pop()
+  const PossibleSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NewStart[0], NewStart[1], NewStart[2]]))
+  const NextStop = HasPossibleStep(PossibleSteps) ? FindPossibleSteps(PossibleSteps) : null
+  return (NextStop === null && theData.Forks.length !== 0) ? walkFork(idx, theData, kindValue, [{StartX, StartY, EndX, EndY}])
                                                            : (NextStop === null) ? "Neither"
-                                                           : walk(NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}])
+                                                           : walk(idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}])
 }
+//function walk ()  {j = [].slice.call(arguments);  setTimeout(walkees.apply(null, j), 10000)}
 
-const reducer = (kindValues, {StartX, StartY, EndX, EndY}, theData) => {
+const reducer = (kindValues, idx, {StartX, StartY, EndX, EndY}, theData) => {
   return kindValues.reduce((acc, kindValue) => {
     return IsArrived([StartX, StartY, theData.Matrix[StartX][StartY]], kindValue, EndX, EndY) ? (!!kindValue ? "Decimal" : "Binary")
-                   : !HasPStep(MovesFromHere([StartX, StartY, kindValue])) ? acc 
-                   : walk([StartX, StartY, theData.Matrix[StartX][StartY]], theData, kindValue, [{StartX, StartY, EndX, EndY}])
+                   : !HasPossibleStep(MovesFromHere([StartX, StartY, kindValue])) ? acc 
+                   : walk(idx, [StartX, StartY, theData.Matrix[StartX][StartY]], theData, kindValue, [{StartX, StartY, EndX, EndY}])
   }, "Neither")
 }
 
-const processor = (startEnd, theData) => reducer(Object.values({binary: 0, decimal:1}), startEnd, theData)
+const processor = (idx, startEnd, theData) => reducer(Object.values({binary: 0, decimal:1}), idx, startEnd, theData)
 
-const run = (tests) => tests.map((ATest) => {
+const run = (tests) => tests.map((ATest, idx) => {
   theData.Visited = []  
   theData.Forks   = []  
   const [StartX, StartY, EndX, EndY] = MatrixBaseNormalizer(ATest)
-  return processor({StartX,StartY,EndX,EndY}, theData)
+  createCanvas(idx)
+  renderRedCell   = renderCell([255,0,0])(idx)
+  renderGreenCell = renderCell([0,255,0])(idx)
+  renderMaze(idx)(theData.Matrix)
+  renderLetter(idx)("S")([StartX, StartY])
+  renderLetter(idx)("E")([EndX, EndY])
+
+  return processor(idx, {StartX,StartY,EndX,EndY}, theData)
   })
 
 ////////////
