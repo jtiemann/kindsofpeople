@@ -64,6 +64,11 @@ theData = {
   //StartEnd: {"StartX":0, "StartY":0, "EndX":0, "EndY":0},
 }
 
+const prepData = (ATest) => {
+  theData.Visited = []  
+  theData.Forks   = [] 
+  return MatrixBaseNormalizer(ATest)
+}
 //////////////////////
 // HELPER FUNCTIONS //
 //////////////////////
@@ -85,6 +90,9 @@ const AddUniquely = (Arr, Unit) => {
                       return Arr.concat([Unit])
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 /////////////////////
 // LOGIC FUNCTIONS //
@@ -105,11 +113,11 @@ const CanIMove = (Matrix) => (Loc) => (Dir) => {
   return isMoveOK
 }
 const CanIMoveXYDir = CanIMove(theData.Matrix)
-const MovesFromHere = function(Here) {
+const MovesFromHere = Here => {
   let IsInMatrix = theData.Matrix[Here[0]][Here[1]] === Here[2] 
   if (!IsInMatrix) return [[],[],[],[]]
   let CanIMoveDir = CanIMoveXYDir(Here)
-  return [North, South, East, West].map((D) => CanIMoveDir(D))
+  return Directions.map((D) => CanIMoveDir(D))
 }
 const UnvisitedMovesFromHere = (AVisited) => (PossibleMoves) => 
                                   PossibleMoves.filter((x) => !AVisited.find((y) => JSON.stringify(y)==JSON.stringify(x[0]))) 
@@ -141,7 +149,7 @@ const renderMaze= (canvasSelector) => (matrix) => {
 const renderCell = ([fr,fg,fb]=[0,0,0]) => (canvasSelector) => ([y,x]=[0,0]) => {
   var c2=document.getElementById(canvasSelector);
   var ctx=c2.getContext("2d");
-  ctx.fillStyle=`rgba(${fr},${fg},${fb}, 0.7)`;
+  ctx.fillStyle=`rgba(${fr},${fg},${fb}, 0.3)`;
   ctx.fillRect(100+x*30,100+y*30,29,29);
 }
 const renderLetter = (canvasSelector) => (letter) => ([y,x]=[0,0]) => {
@@ -152,15 +160,26 @@ const renderLetter = (canvasSelector) => (letter) => ([y,x]=[0,0]) => {
   return ctx.fillText(letter,110+x*30,122+y*30);
 }
 
+renderMazeStartEnd = (idx, matrix, [StartX, StartY], [EndX, EndY]) => {
+  createCanvas(idx)
+  renderRedCell   = renderCell([255,0,0])(idx)
+  renderGreenCell = renderCell([0,255,0])(idx)
+  renderMaze(idx)(matrix)
+  renderLetter(idx)("S")([StartX, StartY])
+  renderLetter(idx)("E")([EndX, EndY])  
+}
+
 ///////////////////////
 // TRAVERSAL HELPERS //
 ///////////////////////
 
 
-const walk = (idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}]) => {
-  //kindValue == 0 ? renderCell([128,0,128])(idx)(NextStop) : renderCell([128,128,128])(idx)(NextStop)
+async function walk(idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}]) {
+  kindValue == 0 ? renderCell([128,0,128])(idx)(NextStop) : renderCell([128,128,128])(idx)(NextStop)
+  await sleep(100)
   if (IsArrived(NextStop, kindValue, EndX, EndY)) return !!kindValue ? "Decimal" : "Binary"
   const PossibleSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NextStop[0], NextStop[1], kindValue]))
+  console.log(PossibleSteps)
   theData.Visited = AddUniquely(theData.Visited, NextStop)
   theData.Forks = ForkMe(PossibleSteps, NextStop, theData.Forks)
   //console.log(theData.Forks[theData.Forks.length - 1])
@@ -191,17 +210,9 @@ const reducer = (kindValues, idx, {StartX, StartY, EndX, EndY}, theData) => {
 const processor = (idx, startEnd, theData) => reducer(Object.values({binary: 0, decimal:1}), idx, startEnd, theData)
 
 const run = (tests) => tests.map((ATest, idx) => {
-  theData.Visited = []  
-  theData.Forks   = []  
-  const [StartX, StartY, EndX, EndY] = MatrixBaseNormalizer(ATest)
-  createCanvas(idx)
-  renderRedCell   = renderCell([255,0,0])(idx)
-  renderGreenCell = renderCell([0,255,0])(idx)
-  renderMaze(idx)(theData.Matrix)
-  renderLetter(idx)("S")([StartX, StartY])
-  renderLetter(idx)("E")([EndX, EndY])
-
-  return processor(idx, {StartX,StartY,EndX,EndY}, theData)
+  const [StartX, StartY, EndX, EndY] = prepData(ATest)
+  renderMazeStartEnd(idx, theData.Matrix, [StartX, StartY], [EndX, EndY])
+  return processor(idx, {StartX,StartY,EndX,EndY}, {...theData})
   })
 
 ////////////
