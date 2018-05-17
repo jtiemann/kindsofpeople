@@ -137,7 +137,7 @@ const ForkMe     = (PossibleSteps, NextStop, Forks) =>
 const createCanvas = (idx) => {
   let jack = document.createElement("canvas")
   jack.id = idx
-  jack.width = "600"
+  jack.width = "800"
   jack.height = "400"
   document.body.appendChild(jack)
 }
