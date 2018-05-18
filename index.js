@@ -29,21 +29,19 @@ OrigData = `10 20
 10000000000000001111
 11111111111111111111
 11111111111111111111
-6
+4
 2 3 8 16
 8 1 7 3
 1 1 10 20
 2 3 8 16
-8 1 7 3
-1 1 10 20
 `
 const range = (start,end) => { let data=[]; for (i=start;i<end;i++){ data.push(i)}; return data}
 
 const randomMazeGenerator = (rows) => (cols) => {
   let data = []
-  return range(0,rows).map((row)=>range(0,cols).map((col) => Math.round(Math.random())))
+  return range(0,rows).map((row)=>range(0,cols).map((col) => Math.round(Math.random()+.2)))
 }
-
+rmaze = randomMazeGenerator(10)(20)
 ////////////////
 // PARSE DATA //
 ////////////////
@@ -52,8 +50,8 @@ var Lines      = OrigData.split("\n")
 var RowColLine = Lines[0]
 var NumCols    = parseInt(RowColLine.split(" ")[1] ,10)
 var NumRows    = parseInt( RowColLine.split(" ")[0],10)
-var Matrix     = Lines.slice(1,NumRows+1).map((x)=>x.split("").map((y)=>parseInt(y,10)))
-//var Matrix     = randomMazeGenerator(10,20)
+//var Matrix     = Lines.slice(1,NumRows+1).map((x)=>x.split("").map((y)=>parseInt(y,10)))
+var Matrix     = rmaze
 var NumTests   = parseInt(Lines[NumRows+1],10)
 var TestLines  = Lines.slice(NumRows+2).filter((n)=>n !== '')
                                       .map((x)=> x.split(" ")
@@ -212,7 +210,7 @@ const walkFork = (idx, theData,kindValue, [{StartX, StartY, EndX, EndY}]) => {
 const reducer = (kindValues, idx, {StartX, StartY, EndX, EndY}, theData) => {
   return kindValues.reduce((acc, kindValue) => {
     return IsArrived([StartX, StartY, theData.Matrix[StartX][StartY]], kindValue, EndX, EndY) ? (!!kindValue ? "Decimal" : "Binary")
-                   : !HasPossibleStep(MovesFromHere([StartX, StartY, kindValue])) ? acc 
+                   : theData.Matrix[EndX][EndY] !== kindValue || !HasPossibleStep(MovesFromHere([StartX, StartY, kindValue])) ? acc 
                    : walk(idx, [StartX, StartY, theData.Matrix[StartX][StartY]], theData, kindValue, [{StartX, StartY, EndX, EndY}])
   }, "Neither")
 }
