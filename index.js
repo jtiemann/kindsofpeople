@@ -29,11 +29,20 @@ OrigData = `10 20
 10000000000000001111
 11111111111111111111
 11111111111111111111
-3
+6
+2 3 8 16
+8 1 7 3
+1 1 10 20
 2 3 8 16
 8 1 7 3
 1 1 10 20
 `
+const range = (start,end) => { let data=[]; for (i=start;i<end;i++){ data.push(i)}; return data}
+
+const randomMazeGenerator = (rows) => (cols) => {
+  let data = []
+  return range(0,rows).map((row)=>range(0,cols).map((col) => Math.round(Math.random())))
+}
 
 ////////////////
 // PARSE DATA //
@@ -44,6 +53,7 @@ var RowColLine = Lines[0]
 var NumCols    = parseInt(RowColLine.split(" ")[1] ,10)
 var NumRows    = parseInt( RowColLine.split(" ")[0],10)
 var Matrix     = Lines.slice(1,NumRows+1).map((x)=>x.split("").map((y)=>parseInt(y,10)))
+//var Matrix     = randomMazeGenerator(10,20)
 var NumTests   = parseInt(Lines[NumRows+1],10)
 var TestLines  = Lines.slice(NumRows+2).filter((n)=>n !== '')
                                       .map((x)=> x.split(" ")
@@ -123,9 +133,11 @@ const UnvisitedMovesFromHere = (AVisited) => (PossibleMoves) =>
                                   PossibleMoves.filter((x) => !AVisited.find((y) => JSON.stringify(y)==JSON.stringify(x[0]))) 
 
 const canStepInMultipleDirections = (Arr) => Arr.filter((x) => x.length > 0).length > 1
-const IsArrived  = (NextStop, BOrD, EndX, EndY) => (NextStop[0] == EndX && NextStop[1] == EndY && NextStop[2] == BOrD)
-const HasPossibleStep   = (PossibleSteps) => PossibleSteps ? PossibleSteps.find((x) => x.length > 0) : null
-const FindPossibleSteps = (PossibleSteps) => PossibleSteps.find((x) => x.length > 0)[0]
+const IsArrived          = (NextStop, BOrD, EndX, EndY) => (NextStop[0] == EndX && NextStop[1] == EndY && NextStop[2] == BOrD)
+const HasPossibleStep    = (PossibleSteps) => PossibleSteps ? PossibleSteps.find((x) => x.length > 0) : null
+const FindPossibleSteps2 = (PossibleSteps,dest) => PossibleSteps.find((x) => x.length > 0)[0]
+const FindPossibleSteps  = (PossibleSteps,dest) =>  PossibleSteps.filter(x=>x.length>0).sort((x,y)=>distanceToDestination(x[0],dest) > distanceToDestination(y[0],dest))[0][0]
+const distanceToDestination = (coord, dest) => Math.pow((coord[0] - dest[0]), 2) + Math.pow((coord[1] - dest[1]), 2)
 const ForkMe     = (PossibleSteps, NextStop, Forks) => 
                     canStepInMultipleDirections ? AddUniquely(Forks, NextStop)
                                                 : Forks.filter((x) => JSON.stringify(x) !== JSON.stringify(NextStop))
@@ -160,13 +172,13 @@ const renderLetter = (canvasSelector) => (letter) => ([y,x]=[0,0]) => {
   return ctx.fillText(letter,110+x*30,122+y*30);
 }
 
-renderMazeStartEnd = (idx, matrix, [StartX, StartY], [EndX, EndY]) => {
+const renderMazeStartEnd = (idx, matrix, [StartX, StartY], [EndX, EndY]) => {
   createCanvas(idx)
   renderRedCell   = renderCell([255,0,0])(idx)
   renderGreenCell = renderCell([0,255,0])(idx)
   renderMaze(idx)(matrix)
   renderLetter(idx)("S")([StartX, StartY])
-  renderLetter(idx)("E")([EndX, EndY])  
+  renderLetter(idx)("X")([EndX, EndY])  
 }
 
 ///////////////////////
@@ -181,7 +193,7 @@ async function walk(idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, E
   const PossibleSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NextStop[0], NextStop[1], kindValue]))
   theData.Visited = AddUniquely(theData.Visited, NextStop)
   theData.Forks = ForkMe(PossibleSteps, NextStop, theData.Forks)
-  NextStop = HasPossibleStep(PossibleSteps) ? FindPossibleSteps(PossibleSteps) : null
+  NextStop = HasPossibleStep(PossibleSteps) ? FindPossibleSteps(PossibleSteps, [EndX, EndY]) : null
   return (NextStop === null && theData.Forks.length !== 0) ? walkFork(idx, theData, kindValue, [{StartX, StartY, EndX, EndY}])
                                                            : (NextStop === null) ? "Neither"
                                                            : walk(idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}])
@@ -190,7 +202,7 @@ async function walk(idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, E
 const walkFork = (idx, theData,kindValue, [{StartX, StartY, EndX, EndY}]) => {
   const NewStart = theData.Forks.pop()
   const PossibleSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NewStart[0], NewStart[1], NewStart[2]]))
-  const NextStop = HasPossibleStep(PossibleSteps) ? FindPossibleSteps(PossibleSteps) : null
+  const NextStop = HasPossibleStep(PossibleSteps) ? FindPossibleSteps(PossibleSteps, [EndX, EndY]) : null
   return (NextStop === null && theData.Forks.length !== 0) ? walkFork(idx, theData, kindValue, [{StartX, StartY, EndX, EndY}])
                                                            : (NextStop === null) ? "Neither"
                                                            : walk(idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}])
@@ -218,8 +230,8 @@ const run = (tests) => tests.map((ATest, idx) => {
 ////////////
 
 const results = run(theData.TestLines)
-console.log(results.join("\n"))
-assert(results.join(", ") === "Binary, Decimal, Neither", "Maze " )
+//console.log(results.join("\n"))
+//assert(results.join(", ") === "Binary, Decimal, Neither", "Maze " )
 
 ///////////////////////
 // LOGGING FUNCTIONS //
