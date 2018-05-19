@@ -41,7 +41,15 @@ const randomMazeGenerator = (rows) => (cols) => {
   let data = []
   return range(0,rows).map((row)=>range(0,cols).map((col) => Math.round(Math.random()+.2)))
 }
-rmaze = randomMazeGenerator(10)(20)
+randomTestGenerator = (rows) => (cols) => (num) => {
+  return range(0,num).map(() => [
+    [Math.ceil(Math.random()*rows), Math.ceil(Math.random()*cols)],
+    [Math.ceil(Math.random()*rows), Math.ceil(Math.random()*cols)]
+    ])
+}
+rmaze = randomMazeGenerator(20)(40)
+rtests = randomTestGenerator(20)(40)(1)
+
 ////////////////
 // PARSE DATA //
 ////////////////
@@ -52,11 +60,13 @@ var NumCols    = parseInt(RowColLine.split(" ")[1] ,10)
 var NumRows    = parseInt( RowColLine.split(" ")[0],10)
 //var Matrix     = Lines.slice(1,NumRows+1).map((x)=>x.split("").map((y)=>parseInt(y,10)))
 var Matrix     = rmaze
-var NumTests   = parseInt(Lines[NumRows+1],10)
-var TestLines  = Lines.slice(NumRows+2).filter((n)=>n !== '')
-                                      .map((x)=> x.split(" ")
-                                                  .map((y)=>parseInt(y,10)))
-                                      .map(([a,b,c,d]) => [[a,b],[c,d]])   
+//var NumTests   = parseInt(Lines[NumRows+1],10)
+// var TestLines  = Lines.slice(NumRows+2).filter((n)=>n !== '')
+//                                       .map((x)=> x.split(" ")
+//                                                   .map((y)=>parseInt(y,10)))
+//                                       .map(([a,b,c,d]) => [[a,b],[c,d]])   
+var TestLines = rtests
+
 ////////////////////
 // Data Structure //
 ////////////////////
@@ -109,11 +119,11 @@ function sleep(ms) {
 const CanIMove = (Matrix) => (Loc) => (Dir) => {
  let isMoveOK
   switch (Dir) {
-    case North: isMoveOK = Loc[0]+1 <  NumRows && theData.Matrix[Loc[0]+1][Loc[1]] === Loc[2] ? [[Loc[0]+1,Loc[1], Loc[2]]] : []
+    case North: isMoveOK = Loc[0]+1 <  theData.Matrix.length && theData.Matrix[Loc[0]+1][Loc[1]] === Loc[2] ? [[Loc[0]+1,Loc[1], Loc[2]]] : []
                 break; 
     case South: isMoveOK = Loc[0]-1 >= 0       && theData.Matrix[Loc[0]-1][Loc[1]] === Loc[2] ? [[Loc[0]-1,Loc[1], Loc[2]]]: []
                 break; 
-    case East:  isMoveOK = Loc[1]+1 <  NumCols && theData.Matrix[Loc[0]][Loc[1]+1] === Loc[2] ? [[Loc[0],Loc[1]+1, Loc[2]]]: []
+    case East:  isMoveOK = Loc[1]+1 <  theData.Matrix[0].length && theData.Matrix[Loc[0]][Loc[1]+1] === Loc[2] ? [[Loc[0],Loc[1]+1, Loc[2]]]: []
                 break; 
     case West:  isMoveOK = Loc[1]-1 >= 0       && theData.Matrix[Loc[0]][Loc[1]-1] === Loc[2] ? [[Loc[0],Loc[1]-1, Loc[2]]]: []
                 break; 
@@ -147,8 +157,8 @@ const ForkMe     = (PossibleSteps, NextStop, Forks) =>
 const createCanvas = (idx) => {
   let jack = document.createElement("canvas")
   jack.id = idx
-  jack.width = "800"
-  jack.height = "400"
+  jack.width = "2000"
+  jack.height = "1000"
   document.body.appendChild(jack)
 }
 
