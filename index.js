@@ -39,7 +39,7 @@ const range = (start,end) => { let data=[]; for (i=start;i<end;i++){ data.push(i
 
 const randomMazeGenerator = (rows) => (cols) => {
   let data = []
-  return range(0,rows).map((row)=>range(0,cols).map((col) => Math.round(Math.random()+.2)))
+  return range(0,rows).map((row)=>range(0,cols).map((col) => Math.round(Math.random() + .2) ))
 }
 rmaze = randomMazeGenerator(10)(20)
 ////////////////
@@ -60,26 +60,25 @@ var TestLines  = Lines.slice(NumRows+2).filter((n)=>n !== '')
 ////////////////////
 // Data Structure //
 ////////////////////
+const sub1 = (x) => x - 1
 
 //Initial State
 theData = {
+  kinds: {binary: 0, decimal:1},
   Matrix: Matrix,
-  TestLines: TestLines,
+  TestLines: TestLines.map((rows)=>rows.map((col)=>col.map(sub1))),
   Visited: [],
   Forks: [],
-  //result: "Neither",
-  //CurrentLocation: [0,0],
-  //StartEnd: {"StartX":0, "StartY":0, "EndX":0, "EndY":0},
+  aTest:[],
+  canvasIdx:0
 }
 
-const prepData = (ATest) => {
-  theData.Visited = []  
-  theData.Forks   = [] 
-  return MatrixBaseNormalizer(ATest)
-}
 //////////////////////
 // HELPER FUNCTIONS //
 //////////////////////
+const _pipe = (f, g) => (...args) => g(f(...args))
+const pipe = (...fns) => fns.reduce(_pipe)
+const compose = (...fns) => fns.reduceRight(_pipe)
 
 const North      = Symbol()
 const South      = Symbol()
@@ -91,13 +90,7 @@ const Binary     = Symbol()
 const Decimal    = Symbol()
 const Neither    = Symbol()
 
-const MatrixBaseNormalizer = ATest => [ATest[0][0]-1, ATest[0][1]-1, ATest[1][0]-1, ATest[1][1]-1]
-const AddUniquely = (Arr, Unit) => {
-                      //if (!Arr.find((u) => JSON.stringify(Unit) == JSON.stringify(u))) 
-                        //Arr.push(Unit)
-                      return Arr.concat([Unit])
-}
-
+const MatrixTestNormalizerf = theData => { return {...theData, TestLines: TestLines.map((rows)=>rows.map((col)=>col.map(sub1)))}}
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -137,7 +130,7 @@ const FindPossibleSteps2 = (PossibleSteps,dest) => PossibleSteps.find((x) => x.l
 const FindPossibleSteps  = (PossibleSteps,dest) =>  PossibleSteps.filter(x=>x.length>0).sort((x,y)=>distanceToDestination(x[0],dest) > distanceToDestination(y[0],dest))[0][0]
 const distanceToDestination = (coord, dest) => Math.pow((coord[0] - dest[0]), 2) + Math.pow((coord[1] - dest[1]), 2)
 const ForkMe     = (PossibleSteps, NextStop, Forks) => 
-                    canStepInMultipleDirections ? AddUniquely(Forks, NextStop)
+                    canStepInMultipleDirections ? Forks.concat([NextStop])
                                                 : Forks.filter((x) => JSON.stringify(x) !== JSON.stringify(NextStop))
 
 ////////////////////
@@ -170,13 +163,15 @@ const renderLetter = (canvasSelector) => (letter) => ([y,x]=[0,0]) => {
   return ctx.fillText(letter,110+x*30,122+y*30);
 }
 
-const renderMazeStartEnd = (idx, matrix, [StartX, StartY], [EndX, EndY]) => {
+const doRenderMazef = (theData) => {
+  let idx = theData.canvasIdx
   createCanvas(idx)
   renderRedCell   = renderCell([255,0,0])(idx)
-  renderGreenCell = renderCell([0,255,0])(idx)
-  renderMaze(idx)(matrix)
-  renderLetter(idx)("S")([StartX, StartY])
-  renderLetter(idx)("X")([EndX, EndY])  
+  renderGreenCell = renderCell([0,255,128])(idx)
+  renderMaze(idx)(theData.Matrix)
+  renderLetter(idx)("S")(theData.TestLines[idx][0])
+  renderLetter(idx)("X")(theData.TestLines[idx][1]) 
+  return theData
 }
 
 ///////////////////////
@@ -185,11 +180,12 @@ const renderMazeStartEnd = (idx, matrix, [StartX, StartY], [EndX, EndY]) => {
 
 
 async function walk(idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}]) {
+  //this is no place for a renderer! ... but simple
   kindValue == 0 ? renderCell([128,0,128])(idx)(NextStop) : renderCell([128,128,128])(idx)(NextStop)
   await sleep(100)
   if (IsArrived(NextStop, kindValue, EndX, EndY)) return !!kindValue ? "Decimal" : "Binary"
   const PossibleSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NextStop[0], NextStop[1], kindValue]))
-  theData.Visited = AddUniquely(theData.Visited, NextStop)
+  theData.Visited = theData.Visited.concat([NextStop])
   theData.Forks = ForkMe(PossibleSteps, NextStop, theData.Forks)
   NextStop = HasPossibleStep(PossibleSteps) ? FindPossibleSteps(PossibleSteps, [EndX, EndY]) : null
   return (NextStop === null && theData.Forks.length !== 0) ? walkFork(idx, theData, kindValue, [{StartX, StartY, EndX, EndY}])
@@ -205,31 +201,27 @@ const walkFork = (idx, theData,kindValue, [{StartX, StartY, EndX, EndY}]) => {
                                                            : (NextStop === null) ? "Neither"
                                                            : walk(idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}])
 }
-//function walk ()  {j = [].slice.call(arguments);  setTimeout(walkees.apply(null, j), 10000)}
 
-const reducer = (kindValues, idx, {StartX, StartY, EndX, EndY}, theData) => {
-  return kindValues.reduce((acc, kindValue) => {
+const reducerf = (theData) => {
+  let idx = theData.canvasIdx
+  let [[StartX,StartY],[EndX, EndY]] = theData.TestLines[idx]
+  return Object.values(theData.kinds).reduce((acc, kindValue) => {
     return IsArrived([StartX, StartY, theData.Matrix[StartX][StartY]], kindValue, EndX, EndY) ? (!!kindValue ? "Decimal" : "Binary")
                    : theData.Matrix[EndX][EndY] !== kindValue || !HasPossibleStep(MovesFromHere([StartX, StartY, kindValue])) ? acc 
                    : walk(idx, [StartX, StartY, theData.Matrix[StartX][StartY]], theData, kindValue, [{StartX, StartY, EndX, EndY}])
   }, "Neither")
 }
 
-const processor = (idx, startEnd, theData) => reducer(Object.values({binary: 0, decimal:1}), idx, startEnd, theData)
-
-const run = (tests) => tests.map((ATest, idx) => {
-  const [StartX, StartY, EndX, EndY] = prepData(ATest)
-  renderMazeStartEnd(idx, theData.Matrix, [StartX, StartY], [EndX, EndY])
-  return processor(idx, {StartX,StartY,EndX,EndY}, {...theData})
-  })
-
 ////////////
 // Run It //
 ////////////
 
-const results = run(theData.TestLines)
-//console.log(results.join("\n"))
-//assert(results.join(", ") === "Binary, Decimal, Neither", "Maze " )
+// compose(processorf, renderMazef, MatrixTestNormalizerf)({...theData})
+//processorf(renderMazef(MatrixTestNormalizerf({...theData})))
+//theData.TestLines.map((u,idx)=>reducerf(doRenderMazef({...theData, canvasIdx:idx})))
+let renderAndWalk = pipe(doRenderMazef, reducerf)
+theData.TestLines.map( (u,idx)=>renderAndWalk({...theData, canvasIdx:idx}) )
+//const results = run(theData.TestLines)
 
 ///////////////////////
 // LOGGING FUNCTIONS //
