@@ -41,32 +41,48 @@ const randomMazeGenerator = (rows) => (cols) => {
   let data = []
   return range(0,rows).map((row)=>range(0,cols).map((col) => Math.round(Math.random() + .2) ))
 }
-rmaze = randomMazeGenerator(10)(20)
+randomTestGenerator = (maze) => (rows) => (cols) => (num) => {
+  let jack
+   return se =  range(0,num).map(() => {
+     do {  jack = [
+      [Math.floor(Math.random()*rows), Math.floor(Math.random()*cols)],
+      [Math.floor(Math.random()*rows), Math.floor(Math.random()*cols)]
+      ]
+    }
+      while ( maze[jack[0][0]][jack[0][1]] !== maze[jack[1][0]][jack[1][1]] )
+      return jack
+ })
+}
+let rmaze = randomMazeGenerator(20)(40)
+let rtests = randomTestGenerator(rmaze)(20)(40)(1)
+
 ////////////////
 // PARSE DATA //
 ////////////////
 
-var Lines      = OrigData.split("\n")
-var RowColLine = Lines[0]
-var NumCols    = parseInt(RowColLine.split(" ")[1] ,10)
-var NumRows    = parseInt( RowColLine.split(" ")[0],10)
-//var Matrix     = Lines.slice(1,NumRows+1).map((x)=>x.split("").map((y)=>parseInt(y,10)))
-var Matrix     = rmaze
-var NumTests   = parseInt(Lines[NumRows+1],10)
-var TestLines  = Lines.slice(NumRows+2).filter((n)=>n !== '')
-                                      .map((x)=> x.split(" ")
-                                                  .map((y)=>parseInt(y,10)))
-                                      .map(([a,b,c,d]) => [[a,b],[c,d]])   
+let Lines      = OrigData.split("\n")
+let RowColLine = Lines[0]
+let NumCols    = parseInt(RowColLine.split(" ")[1] ,10)
+let NumRows    = parseInt( RowColLine.split(" ")[0],10)
+let Matrix     = rmaze
+  
+
 ////////////////////
 // Data Structure //
 ////////////////////
+
 const sub1 = (x) => x - 1
+const FindPossibleSteps = (PossibleSteps,dest) => PossibleSteps.find((x) => x.length > 0)[0]
+const MarcoPoloOptimization  = (PossibleSteps,dest) =>  PossibleSteps.filter(x=>x.length>0).sort((x,y)=>distanceToDestination(x[0],dest) > distanceToDestination(y[0],dest))[0][0]
 
 //Initial State
 theData = {
   kinds: {binary: 0, decimal:1},
   Matrix: Matrix,
-  TestLines: TestLines.map((rows)=>rows.map((col)=>col.map(sub1))),
+  rulesets:[MarcoPoloOptimization,FindPossibleSteps],
+  currentRuleset:null,
+  currentTestLine:null,
+  TestLines: rtests,
   Visited: [],
   Forks: [],
   aTest:[],
@@ -102,11 +118,11 @@ function sleep(ms) {
 const CanIMove = (Matrix) => (Loc) => (Dir) => {
  let isMoveOK
   switch (Dir) {
-    case North: isMoveOK = Loc[0]+1 <  NumRows && theData.Matrix[Loc[0]+1][Loc[1]] === Loc[2] ? [[Loc[0]+1,Loc[1], Loc[2]]] : []
+    case North: isMoveOK = Loc[0]+1 <  theData.Matrix.length && theData.Matrix[Loc[0]+1][Loc[1]] === Loc[2] ? [[Loc[0]+1,Loc[1], Loc[2]]] : []
                 break; 
     case South: isMoveOK = Loc[0]-1 >= 0       && theData.Matrix[Loc[0]-1][Loc[1]] === Loc[2] ? [[Loc[0]-1,Loc[1], Loc[2]]]: []
                 break; 
-    case East:  isMoveOK = Loc[1]+1 <  NumCols && theData.Matrix[Loc[0]][Loc[1]+1] === Loc[2] ? [[Loc[0],Loc[1]+1, Loc[2]]]: []
+    case East:  isMoveOK = Loc[1]+1 <  theData.Matrix[0].length && theData.Matrix[Loc[0]][Loc[1]+1] === Loc[2] ? [[Loc[0],Loc[1]+1, Loc[2]]]: []
                 break; 
     case West:  isMoveOK = Loc[1]-1 >= 0       && theData.Matrix[Loc[0]][Loc[1]-1] === Loc[2] ? [[Loc[0],Loc[1]-1, Loc[2]]]: []
                 break; 
@@ -126,8 +142,6 @@ const UnvisitedMovesFromHere = (AVisited) => (PossibleMoves) =>
 const canStepInMultipleDirections = (Arr) => Arr.filter((x) => x.length > 0).length > 1
 const IsArrived          = (NextStop, BOrD, EndX, EndY) => (NextStop[0] == EndX && NextStop[1] == EndY && NextStop[2] == BOrD)
 const HasPossibleStep    = (PossibleSteps) => PossibleSteps ? PossibleSteps.find((x) => x.length > 0) : null
-const FindPossibleSteps2 = (PossibleSteps,dest) => PossibleSteps.find((x) => x.length > 0)[0]
-const FindPossibleSteps  = (PossibleSteps,dest) =>  PossibleSteps.filter(x=>x.length>0).sort((x,y)=>distanceToDestination(x[0],dest) > distanceToDestination(y[0],dest))[0][0]
 const distanceToDestination = (coord, dest) => Math.pow((coord[0] - dest[0]), 2) + Math.pow((coord[1] - dest[1]), 2)
 const ForkMe     = (PossibleSteps, NextStop, Forks) => 
                     canStepInMultipleDirections ? Forks.concat([NextStop])
@@ -140,8 +154,8 @@ const ForkMe     = (PossibleSteps, NextStop, Forks) =>
 const createCanvas = (idx) => {
   let jack = document.createElement("canvas")
   jack.id = idx
-  jack.width = "800"
-  jack.height = "400"
+  jack.width = "2000"
+  jack.height = "700"
   document.body.appendChild(jack)
 }
 
@@ -165,12 +179,13 @@ const renderLetter = (canvasSelector) => (letter) => ([y,x]=[0,0]) => {
 
 const doRenderMazef = (theData) => {
   let idx = theData.canvasIdx
+  let testLineIndex = theData.currentTestLine
   createCanvas(idx)
   renderRedCell   = renderCell([255,0,0])(idx)
   renderGreenCell = renderCell([0,255,128])(idx)
   renderMaze(idx)(theData.Matrix)
-  renderLetter(idx)("S")(theData.TestLines[idx][0])
-  renderLetter(idx)("X")(theData.TestLines[idx][1]) 
+  renderLetter(idx)("S")(theData.TestLines[testLineIndex][0])
+  renderLetter(idx)("X")(theData.TestLines[testLineIndex][1]) 
   return theData
 }
 
@@ -178,37 +193,38 @@ const doRenderMazef = (theData) => {
 // TRAVERSAL HELPERS //
 ///////////////////////
 
-
-async function walk(idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}]) {
-  //this is no place for a renderer! ... but simple
+async function walk(fps, idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}]) {
   kindValue == 0 ? renderCell([128,0,128])(idx)(NextStop) : renderCell([128,128,128])(idx)(NextStop)
   await sleep(100)
   if (IsArrived(NextStop, kindValue, EndX, EndY)) return !!kindValue ? "Decimal" : "Binary"
   const PossibleSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NextStop[0], NextStop[1], kindValue]))
   theData.Visited = theData.Visited.concat([NextStop])
   theData.Forks = ForkMe(PossibleSteps, NextStop, theData.Forks)
-  NextStop = HasPossibleStep(PossibleSteps) ? FindPossibleSteps(PossibleSteps, [EndX, EndY]) : null
-  return (NextStop === null && theData.Forks.length !== 0) ? walkFork(idx, theData, kindValue, [{StartX, StartY, EndX, EndY}])
+  NextStop = HasPossibleStep(PossibleSteps) ? fps(PossibleSteps, [EndX, EndY]) : null
+  return (NextStop === null && theData.Forks.length !== 0) ? walkFork(fps, idx, theData, kindValue, [{StartX, StartY, EndX, EndY}])
                                                            : (NextStop === null) ? "Neither"
-                                                           : walk(idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}])
+                                                           : walk(fps, idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}])
 }
 
-const walkFork = (idx, theData,kindValue, [{StartX, StartY, EndX, EndY}]) => {
+const walkFork = (fps, idx, theData,kindValue, [{StartX, StartY, EndX, EndY}]) => {
   const NewStart = theData.Forks.pop()
+  //const NewStart = theData.Forks.shift()
   const PossibleSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NewStart[0], NewStart[1], NewStart[2]]))
-  const NextStop = HasPossibleStep(PossibleSteps) ? FindPossibleSteps(PossibleSteps, [EndX, EndY]) : null
-  return (NextStop === null && theData.Forks.length !== 0) ? walkFork(idx, theData, kindValue, [{StartX, StartY, EndX, EndY}])
+  const NextStop = HasPossibleStep(PossibleSteps) ? fps(PossibleSteps, [EndX, EndY]) : null
+  return (NextStop === null && theData.Forks.length !== 0) ? walkFork(fps, idx, theData, kindValue, [{StartX, StartY, EndX, EndY}])
                                                            : (NextStop === null) ? "Neither"
-                                                           : walk(idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}])
+                                                           : walk(fps, idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}])
 }
 
-const reducerf = (theData) => {
+const walkIt = (theData) => {
   let idx = theData.canvasIdx
-  let [[StartX,StartY],[EndX, EndY]] = theData.TestLines[idx]
+  let fps = theData.currentRuleset
+  let testIdx = theData.currentTestLine
+  let [[StartX,StartY],[EndX, EndY]] = theData.TestLines[testIdx]
   return Object.values(theData.kinds).reduce((acc, kindValue) => {
     return IsArrived([StartX, StartY, theData.Matrix[StartX][StartY]], kindValue, EndX, EndY) ? (!!kindValue ? "Decimal" : "Binary")
                    : theData.Matrix[EndX][EndY] !== kindValue || !HasPossibleStep(MovesFromHere([StartX, StartY, kindValue])) ? acc 
-                   : walk(idx, [StartX, StartY, theData.Matrix[StartX][StartY]], theData, kindValue, [{StartX, StartY, EndX, EndY}])
+                   : walk(fps, idx, [StartX, StartY, theData.Matrix[StartX][StartY]], theData, kindValue, [{StartX, StartY, EndX, EndY}])
   }, "Neither")
 }
 
@@ -216,23 +232,16 @@ const reducerf = (theData) => {
 // Run It //
 ////////////
 
-// compose(processorf, renderMazef, MatrixTestNormalizerf)({...theData})
-//processorf(renderMazef(MatrixTestNormalizerf({...theData})))
-//theData.TestLines.map((u,idx)=>reducerf(doRenderMazef({...theData, canvasIdx:idx})))
-let renderAndWalk = pipe(doRenderMazef, reducerf)
-theData.TestLines.map( (u,idx)=>renderAndWalk({...theData, canvasIdx:idx}) )
-//const results = run(theData.TestLines)
+let renderAndWalk = pipe(doRenderMazef, walkIt)
+results = theData.TestLines.map( (u,idx)=>theData.rulesets.map((rs, idx2) => renderAndWalk({...theData, canvasIdx:idx+10*(idx2), currentTestLine:idx, currentRuleset:rs})) )
 
+results[0].map((p)=>p.then((r)=> console.log(Date(Date.now()), r)))
 ///////////////////////
 // LOGGING FUNCTIONS //
 ///////////////////////
 
 //console.log(theData)
-//console.log("NumCols = ", NumCols)  
-//console.log("NumRows = ", NumRows)  
-//console.log(theData.Matrix)  
-//console.log("NumTests = ", NumTests)  
-//console.log("TestLines = ", TestLines)  
+ 
 function assert(value, desc) {
   if (true) {
     console.log(value ? desc + 'passed! '  :   desc + 'failure...');
