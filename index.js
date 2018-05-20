@@ -143,8 +143,8 @@ const UnvisitedMovesFromHere = (AVisited) => (PossibleMoves) =>
 const canStepInMultipleDirections = (Arr) => Arr.filter((x) => x.length > 0).length > 1
 const IsArrived          = (NextStop, BOrD, EndX, EndY) => (NextStop[0] == EndX && NextStop[1] == EndY && NextStop[2] == BOrD)
 const HasPossibleStep    = (PossibleSteps) => PossibleSteps ? PossibleSteps.find((x) => x.length > 0) : null
-const FindPossibleSteps2 = (PossibleSteps,dest) => PossibleSteps.find((x) => x.length > 0)[0]
-const FindPossibleSteps  = (PossibleSteps,dest) =>  PossibleSteps.filter(x=>x.length>0).sort((x,y)=>distanceToDestination(x[0],dest) > distanceToDestination(y[0],dest))[0][0]
+const FindPossibleSteps = (PossibleSteps,dest) => PossibleSteps.find((x) => x.length > 0)[0]
+const FindPossibleSteps2  = (PossibleSteps,dest) =>  PossibleSteps.filter(x=>x.length>0).sort((x,y)=>distanceToDestination(x[0],dest) > distanceToDestination(y[0],dest))[0][0]
 const distanceToDestination = (coord, dest) => Math.pow((coord[0] - dest[0]), 2) + Math.pow((coord[1] - dest[1]), 2)
 const ForkMe     = (PossibleSteps, NextStop, Forks) => 
                     canStepInMultipleDirections ? AddUniquely(Forks, NextStop)
@@ -158,7 +158,7 @@ const createCanvas = (idx) => {
   let jack = document.createElement("canvas")
   jack.id = idx
   jack.width = "2000"
-  jack.height = "1000"
+  jack.height = "700"
   document.body.appendChild(jack)
 }
 
@@ -194,43 +194,45 @@ const renderMazeStartEnd = (idx, matrix, [StartX, StartY], [EndX, EndY]) => {
 ///////////////////////
 
 
-async function walk(idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}]) {
+async function walk(fps, idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}]) {
   kindValue == 0 ? renderCell([128,0,128])(idx)(NextStop) : renderCell([128,128,128])(idx)(NextStop)
   await sleep(100)
   if (IsArrived(NextStop, kindValue, EndX, EndY)) return !!kindValue ? "Decimal" : "Binary"
   const PossibleSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NextStop[0], NextStop[1], kindValue]))
   theData.Visited = AddUniquely(theData.Visited, NextStop)
   theData.Forks = ForkMe(PossibleSteps, NextStop, theData.Forks)
-  NextStop = HasPossibleStep(PossibleSteps) ? FindPossibleSteps(PossibleSteps, [EndX, EndY]) : null
-  return (NextStop === null && theData.Forks.length !== 0) ? walkFork(idx, theData, kindValue, [{StartX, StartY, EndX, EndY}])
+  NextStop = HasPossibleStep(PossibleSteps) ? fps(PossibleSteps, [EndX, EndY]) : null
+  return (NextStop === null && theData.Forks.length !== 0) ? walkFork(fps, idx, theData, kindValue, [{StartX, StartY, EndX, EndY}])
                                                            : (NextStop === null) ? "Neither"
-                                                           : walk(idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}])
+                                                           : walk(fps, idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}])
 }
 
-const walkFork = (idx, theData,kindValue, [{StartX, StartY, EndX, EndY}]) => {
+const walkFork = (fps, idx, theData,kindValue, [{StartX, StartY, EndX, EndY}]) => {
   const NewStart = theData.Forks.pop()
+  //const NewStart = theData.Forks.shift()
   const PossibleSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NewStart[0], NewStart[1], NewStart[2]]))
-  const NextStop = HasPossibleStep(PossibleSteps) ? FindPossibleSteps(PossibleSteps, [EndX, EndY]) : null
-  return (NextStop === null && theData.Forks.length !== 0) ? walkFork(idx, theData, kindValue, [{StartX, StartY, EndX, EndY}])
+  const NextStop = HasPossibleStep(PossibleSteps) ? fps(PossibleSteps, [EndX, EndY]) : null
+  return (NextStop === null && theData.Forks.length !== 0) ? walkFork(fps, idx, theData, kindValue, [{StartX, StartY, EndX, EndY}])
                                                            : (NextStop === null) ? "Neither"
-                                                           : walk(idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}])
+                                                           : walk(fps, idx, NextStop, theData, kindValue, [{StartX, StartY, EndX, EndY}])
 }
 //function walk ()  {j = [].slice.call(arguments);  setTimeout(walkees.apply(null, j), 10000)}
 
-const reducer = (kindValues, idx, {StartX, StartY, EndX, EndY}, theData) => {
+const reducer = (fps, kindValues, idx, {StartX, StartY, EndX, EndY}, theData) => {
   return kindValues.reduce((acc, kindValue) => {
     return IsArrived([StartX, StartY, theData.Matrix[StartX][StartY]], kindValue, EndX, EndY) ? (!!kindValue ? "Decimal" : "Binary")
                    : theData.Matrix[EndX][EndY] !== kindValue || !HasPossibleStep(MovesFromHere([StartX, StartY, kindValue])) ? acc 
-                   : walk(idx, [StartX, StartY, theData.Matrix[StartX][StartY]], theData, kindValue, [{StartX, StartY, EndX, EndY}])
+                   : walk(fps, idx, [StartX, StartY, theData.Matrix[StartX][StartY]], theData, kindValue, [{StartX, StartY, EndX, EndY}])
   }, "Neither")
 }
 
-const processor = (idx, startEnd, theData) => reducer(Object.values({binary: 0, decimal:1}), idx, startEnd, theData)
+const processor = (fps, idx, startEnd, theData) => reducer(fps, Object.values({binary: 0, decimal:1}), idx, startEnd, theData)
 
 const run = (tests) => tests.map((ATest, idx) => {
   const [StartX, StartY, EndX, EndY] = prepData(ATest)
   renderMazeStartEnd(idx, theData.Matrix, [StartX, StartY], [EndX, EndY])
-  return processor(idx, {StartX,StartY,EndX,EndY}, {...theData})
+  renderMazeStartEnd(idx+1, theData.Matrix, [StartX, StartY], [EndX, EndY])
+  return [FindPossibleSteps2, FindPossibleSteps].map((fp,idx2) => processor(fp, idx2, {StartX,StartY,EndX,EndY}, {...theData}))
   })
 
 ////////////
