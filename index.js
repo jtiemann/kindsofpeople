@@ -127,11 +127,11 @@
     }
     return isMoveOK
   }
-  const CanIMoveXYDir = CanIMove(theData.Matrix)
-  const MovesFromHere = Here => {
-    let IsInMatrix = theData.Matrix[Here[0]][Here[1]] === Here[2] 
+
+  const MovesFromHere = (td) => Here => {
+    const IsInMatrix = td.Matrix[Here[0]][Here[1]] === Here[2] 
     if (!IsInMatrix) return [[],[],[],[]]
-    let CanIMoveDir = CanIMoveXYDir(Here)
+    const CanIMoveDir = CanIMove(td)(Here)
     return Directions.map((D) => CanIMoveDir(D))
   }
   const UnvisitedMovesFromHere = (AVisited) => (PossibleMoves) => 
@@ -157,8 +157,8 @@
     document.body.appendChild(jack)
   }
 
-  const renderMaze= (canvasSelector) => (matrix) => {
-    matrix.map((row, rowidx) => row.map((col, colidx) => col==0 ? renderGreenCell([rowidx,colidx]) : renderRedCell([rowidx,colidx]) ))
+  const renderMaze = (canvasSelector) => (matrix) => (rrc, rgc) => {
+    matrix.map((row, rowidx) => row.map((col, colidx) => col==0 ? rgc([rowidx,colidx]) : rrc([rowidx,colidx]) ))
   }
 
   const renderCell = ([fr,fg,fb]=[0,0,0]) => (canvasSelector) => ([y,x]=[0,0]) => {
@@ -176,12 +176,12 @@
   }
 
   const doRenderMazef = (theData) => {
-    let idx = theData.canvasIdx
-    let testLineIndex = theData.currentTestLine
+    const idx = theData.canvasIdx
+    const testLineIndex = theData.currentTestLine
     createCanvas(idx)
-    renderRedCell   = renderCell([255,0,0])(idx)
-    renderGreenCell = renderCell([0,255,128])(idx)
-    renderMaze(idx)(theData.Matrix)
+    const renderRedCell   = renderCell([255,0,0])(idx)
+    const renderGreenCell = renderCell([0,255,128])(idx)
+    renderMaze(idx)(theData.Matrix)(renderRedCell, renderGreenCell)
     renderLetter(idx)("S")(theData.TestLines[testLineIndex][0])
     renderLetter(idx)("X")(theData.TestLines[testLineIndex][1]) 
     return theData
@@ -195,10 +195,10 @@
     kindValue == 0 ? renderCell([128,0,128])(idx)(NextStop) : renderCell([128,128,128])(idx)(NextStop)
     await sleep(10)
     if (IsArrived(NextStop, kindValue, EndX, EndY)) return !!kindValue ? "Decimal" : "Binary"
-    
-    const PossibleSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NextStop[0], NextStop[1], kindValue]))
-    const vis             = theData.Visited.concat([NextStop])
-    const fks             = theData.Forks
+
+    const PossibleSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere({...theData})([NextStop[0], NextStop[1], kindValue])).filter(x=>x!==[])
+    const vis           = theData.Visited.concat([NextStop])
+    const fks           = theData.Forks
     theData             = {...theData, Visited: vis, Forks: ForkMe(PossibleSteps, NextStop, fks)}
     NextStop            = HasPossibleStep(PossibleSteps) ? rule(PossibleSteps, [EndX, EndY]) : null
     return (NextStop === null && theData.Forks.length !== 0) ? walkFork(rule, idx, {...theData}, kindValue, [{StartX, StartY, EndX, EndY}])
@@ -208,7 +208,7 @@
 
   const walkFork = (rule, idx, theData,kindValue, [{StartX, StartY, EndX, EndY}]) => {
     const NewStart      = theData.Forks.pop() // mutates theData! 
-    const PossibleSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere([NewStart[0], NewStart[1], NewStart[2]]))
+    const PossibleSteps = UnvisitedMovesFromHere(theData.Visited)(MovesFromHere({...theData})([NewStart[0], NewStart[1], NewStart[2]]))
     const NextStop      = HasPossibleStep(PossibleSteps) ? rule(PossibleSteps, [EndX, EndY]) : null
     
     return (NextStop === null && theData.Forks.length !== 0) ? walkFork(rule, idx, {...theData}, kindValue, [{StartX, StartY, EndX, EndY}])
@@ -217,14 +217,14 @@
   }
 
   const walkIt = (theData) => {
-    let idx                            = theData.canvasIdx
-    let rule                           = theData.currentRuleset
-    let testIdx                        = theData.currentTestLine
-    let [[StartX,StartY],[EndX, EndY]] = theData.TestLines[testIdx]
+    const idx                            = theData.canvasIdx
+    const rule                           = theData.currentRuleset
+    const testIdx                        = theData.currentTestLine
+    const [[StartX,StartY],[EndX, EndY]] = theData.TestLines[testIdx]
 
     return Object.values(theData.kinds).reduce((acc, kindValue) => {
       return IsArrived([StartX, StartY, theData.Matrix[StartX][StartY]], kindValue, EndX, EndY) ? (!!kindValue ? "Decimal" : "Binary")
-                     : theData.Matrix[EndX][EndY] !== kindValue || !HasPossibleStep(MovesFromHere([StartX, StartY, kindValue])) ? acc 
+                     : theData.Matrix[EndX][EndY] !== kindValue || !HasPossibleStep(MovesFromHere({...theData})([StartX, StartY, kindValue])) ? acc 
                      : walk(rule, idx, [StartX, StartY, theData.Matrix[StartX][StartY]], {...theData}, kindValue, [{StartX, StartY, EndX, EndY}])
     }, "Neither")
   }
