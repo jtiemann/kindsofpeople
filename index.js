@@ -233,15 +233,21 @@
 // Run It //
 ////////////
 
-  let renderAndWalk = pipe(doRenderMazef, walkIt)
-  results = theData.TestLines.map( (u,idx)=>
-    theData.rulesets.map((rs, idx2) => 
-      renderAndWalk({...theData, canvasIdx:idx+10*(idx2), currentTestLine:idx, currentRuleset:rs})) )
+  const renderAndWalk = pipe(doRenderMazef, walkIt)
+  const results = theData.TestLines.map((u,idx)=>
+                    theData.rulesets.map((rs, idx2) => 
+                      renderAndWalk({...theData, 
+                                    canvasIdx:idx+10*(idx2), 
+                                    currentTestLine:idx, 
+                                    currentRuleset:rs})
+                        )
+                    )
 
-  results[0].map((p)=>p.then((r)=> console.log(Date(Date.now()), r)))
-  ///////////////////////
-  // LOGGING FUNCTIONS //
-  ///////////////////////
+  results[0].map((p)=>p.then((r)=> {setTimeout(()=>location.reload(),10000); console.log(Date(Date.now()), r)}))
+  
+///////////////////////
+// LOGGING FUNCTIONS //
+///////////////////////
 
   //console.log(theData)
    
