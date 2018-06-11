@@ -55,7 +55,9 @@
         [Math.floor(Math.random()*rows), Math.floor(Math.random()*cols)]
         ]
       }
-        while ( maze[jack[0][0]][jack[0][1]] !== maze[jack[1][0]][jack[1][1]] )
+        while ( maze[jack[0][0]][jack[0][1]] !== maze[jack[1][0]][jack[1][1]] || 
+        	    (jack[0][0] == jack[1][0] && jack[0][1] == jack[1][1])   || 
+        	    maze[jack[0][0]][jack[0][1]] !== 1)
         return jack
    })
   }
@@ -249,7 +251,9 @@
                         )
                     )
 
-  results[0].map((p)=>p.then((r)=> {setTimeout(()=>location.reload(),10000); console.log(Date(Date.now()), r)}))
+  results[0].map((p)=>{ if (p == "Neither") { setTimeout(()=>location.reload(),10000);console.log(Date(Date.now()), r)}
+                        else { p.then((r)=> { setTimeout(()=>location.reload(),10000);console.log(Date(Date.now()), r)}
+                        	)}})
   
 ///////////////////////
 // LOGGING FUNCTIONS //
