@@ -275,15 +275,19 @@ var imgd = ctx.getImageData(0, 0, 1000, 700),
 // Run It //
 ////////////
 
-  let renderAndWalk = pipe(doRenderMazef, walkIt)
-  results = theData.TestLines.map( (u,idx)=>
-    theData.rulesets.map((rs, idx2) => {
-      return renderAndWalk({...theData, canvasIdx:idx+10*(idx2), currentTestLine:idx, currentRuleset:rs})
-      //removeNonPath()
-    }
-      ))
 
-  results[0].map((p)=>p.then((r)=> console.log(Date(Date.now()), r)))
+  const renderAndWalk = pipe(doRenderMazef, walkIt)
+  const results = theData.TestLines.map((u,idx)=>
+                    theData.rulesets.map((rs, idx2) => 
+                      renderAndWalk({...theData, 
+                                    canvasIdx:idx+10*(idx2), 
+                                    currentTestLine:idx, 
+                                    currentRuleset:rs})
+                        )
+                    )
+
+  results[0].map((p)=>p.then((r)=> {setTimeout(()=>location.reload(),10000); console.log(Date(Date.now()), r)}))
+  
 ///////////////////////
 // LOGGING FUNCTIONS //
 ///////////////////////
