@@ -42,17 +42,28 @@
     return range(0,rows).map((row)=>range(0,cols).map((col) => Math.round(Math.random() + .2) ))
   }
   const randomTestGenerator = (maze) => (rows) => (cols) => (num) => {
+    var slope, startValue, endValue,huh
     let jack
      return se =  range(0,num).map(() => {
        do {  jack = [
-        [Math.floor(Math.random()*rows), Math.floor(Math.random()*cols)],
-        [Math.floor(Math.random()*rows), Math.floor(Math.random()*cols)]
-        ]
+                [Math.floor(Math.random()*rows), Math.floor(Math.random()*cols)],
+                [Math.floor(Math.random()*rows), Math.floor(Math.random()*cols)]
+              ]
+          const rise = jack[1][0] - jack[0][0] 
+          const run = jack[1][1] - jack[0][1] ? jack[1][1] - jack[0][1] : .01
+           slope = -rise/run 
+          //console.log(slope)
+           startValue = maze[jack[0][0]][jack[0][1]]
+           endValue   = maze[jack[1][0]][jack[1][1]]
+           //huh = Math.tan(((new Date()).getHours() * Math.PI/6) + (new Date()).getMinutes() * Math.PI/(180*12) )
+                      //console.log(huh, slope)
+
       }
-        while ( maze[jack[0][0]][jack[0][1]] !== maze[jack[1][0]][jack[1][1]] )
+        while (startValue !== endValue)
         return jack
    })
   }
+  
   let rmaze = randomMazeGenerator(20)(40)
   let rtests = randomTestGenerator(rmaze)(20)(40)(1)
 
@@ -67,13 +78,13 @@
   let Matrix     = rmaze
     
 
-  ////////////////////
-  // Data Structure //
-  ////////////////////
+////////////////////
+// Data Structure //
+////////////////////
 
   const sub1 = (x) => x - 1
   const FindPossibleSteps = (PossibleSteps,dest) => PossibleSteps.find((x) => x.length > 0)[0]
-  const MarcoPoloOptimization  = (PossibleSteps,dest) =>  PossibleSteps.filter(x=>x.length>0).sort((x,y)=>distanceToDestination(x[0],dest) > distanceToDestination(y[0],dest))[0][0]
+  const MarcoPoloOptimization  = (PossibleSteps,dest) =>  PossibleSteps.filter(x=>x.length>0).sort((x,y)=>distanceToDestination(x[0],dest) > distanceToDestination(y[0],dest) ? 1 : distanceToDestination(x[0],dest) < distanceToDestination(y[0],dest) ? -1 : 0)[0][0]
 
   //Initial State
   theData = {
@@ -175,8 +186,9 @@
     return ctx.fillText(letter,110+x*30,122+y*30);
   }
 
+
   const doRenderMazef = (theData) => {
-    const idx = theData.canvasIdx
+    const idx           = theData.canvasIdx
     const testLineIndex = theData.currentTestLine
     createCanvas(idx)
     const renderRedCell   = renderCell([255,0,0])(idx)
@@ -228,6 +240,36 @@
                      : walk(rule, idx, [StartX, StartY, theData.Matrix[StartX][StartY]], {...theData}, kindValue, [{StartX, StartY, EndX, EndY}])
     }, "Neither")
   }
+/*function removeNonPath (rw) {
+    console.log('yo ',rw)
+var canvas = document.getElementById("0"),
+    ctx = canvas.getContext("2d")
+    //image = document.getElementById("testImage");
+
+//canvas.height = canvas.width = 135;
+//ctx.drawImage(image,0,0);
+
+var imgd = ctx.getImageData(0, 0, 1000, 700),
+    pix = imgd.data,
+    newColor = {r:0,g:0,b:0, a:0};
+
+    for (var i = 0, n = pix.length; i <n; i += 4) {
+        var r = pix[i],
+                g = pix[i+1],
+                b = pix[i+2];
+
+            // If its white then change it
+            if(b == 128 ){ 
+                // Change the white to whatever.
+                //console.log(r, g, b)
+                pix[i] = newColor.r;
+                pix[i+1] = newColor.g;
+                pix[i+2] = newColor.b;
+                pix[i+3] = newColor.a;
+            }
+    }
+    ctx.putImageData(imgd,30,30)
+}*/
 
 ////////////
 // Run It //
@@ -235,13 +277,16 @@
 
   let renderAndWalk = pipe(doRenderMazef, walkIt)
   results = theData.TestLines.map( (u,idx)=>
-    theData.rulesets.map((rs, idx2) => 
-      renderAndWalk({...theData, canvasIdx:idx+10*(idx2), currentTestLine:idx, currentRuleset:rs})) )
+    theData.rulesets.map((rs, idx2) => {
+      return renderAndWalk({...theData, canvasIdx:idx+10*(idx2), currentTestLine:idx, currentRuleset:rs})
+      //removeNonPath()
+    }
+      ))
 
   results[0].map((p)=>p.then((r)=> console.log(Date(Date.now()), r)))
-  ///////////////////////
-  // LOGGING FUNCTIONS //
-  ///////////////////////
+///////////////////////
+// LOGGING FUNCTIONS //
+///////////////////////
 
   //console.log(theData)
    
